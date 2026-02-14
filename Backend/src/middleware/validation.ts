@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { Request, Response, NextFunction } from 'express';
 
 /**
  * User registration validation
@@ -162,7 +163,7 @@ export const updateUserSchema = Joi.object({
  * Validation middleware
  */
 export const validate = (schema: Joi.ObjectSchema) => {
-  return (req: any, res: any, next: any) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
@@ -174,11 +175,12 @@ export const validate = (schema: Joi.ObjectSchema) => {
         message: detail.message,
       }));
 
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Validation error',
         details: errors,
       });
+      return;
     }
 
     req.body = value;
