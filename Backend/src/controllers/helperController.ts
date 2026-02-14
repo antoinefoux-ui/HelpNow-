@@ -6,7 +6,7 @@ class HelperController {
   /**
    * Setup helper profile
    */
-  async setupHelperProfile(req: Request, res: Response, next: NextFunction) {
+  async setupHelperProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
     const client = await pool.connect();
 
     try {
@@ -19,10 +19,11 @@ class HelperController {
       } = req.body;
 
       if (!trainingLevel) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Training level is required',
         });
+        return;
       }
 
       await client.query('BEGIN');
@@ -76,7 +77,7 @@ class HelperController {
   /**
    * Update helper availability
    */
-  async updateAvailability(req: Request, res: Response, next: NextFunction) {
+  async updateAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
       const { isAvailable, responseRadius } = req.body;
@@ -96,10 +97,11 @@ class HelperController {
       }
 
       if (updates.length === 0) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'No fields to update',
         });
+        return;
       }
 
       updates.push(`updated_at = NOW()`);
@@ -115,10 +117,11 @@ class HelperController {
       const result = await pool.query(query, values);
 
       if (result.rows.length === 0) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Helper profile not found',
         });
+        return;
       }
 
       await redisClient.del(`user:${userId}`);
@@ -135,16 +138,17 @@ class HelperController {
   /**
    * Add certification
    */
-  async addCertification(req: Request, res: Response, next: NextFunction) {
+  async addCertification(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
       const { type, issuer, issueDate, expiryDate, documentUrl } = req.body;
 
       if (!type || !issuer) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Type and issuer are required',
         });
+        return;
       }
 
       const result = await pool.query(
@@ -170,7 +174,7 @@ class HelperController {
   /**
    * Update certification
    */
-  async updateCertification(req: Request, res: Response, next: NextFunction) {
+  async updateCertification(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId, certId } = req.params;
       const updates = req.body;
@@ -185,10 +189,11 @@ class HelperController {
       });
 
       if (updateFields.length === 0) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'No fields to update',
         });
+        return;
       }
 
       values.push(certId, userId);
@@ -216,7 +221,7 @@ class HelperController {
   /**
    * Delete certification
    */
-  async deleteCertification(req: Request, res: Response, next: NextFunction) {
+  async deleteCertification(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId, certId } = req.params;
 
@@ -239,7 +244,7 @@ class HelperController {
   /**
    * Get helper statistics
    */
-  async getStatistics(req: Request, res: Response, next: NextFunction) {
+  async getStatistics(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
 
@@ -285,16 +290,17 @@ class HelperController {
   /**
    * Update helper current location
    */
-  async updateLocation(req: Request, res: Response, next: NextFunction) {
+  async updateLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
       const { latitude, longitude } = req.body;
 
       if (!latitude || !longitude) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Latitude and longitude required',
         });
+        return;
       }
 
       // Store in helper_locations table
