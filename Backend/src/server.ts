@@ -1,4 +1,4 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { Application, Request, Response } from 'express';
 import http from 'http';
 import { Server as SocketServer } from 'socket.io';
 import cors from 'cors';
@@ -58,7 +58,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -73,7 +73,7 @@ app.use('/api/v1/emergencies', authenticateToken, emergencyRoutes);
 app.use('/api/v1/helpers', authenticateToken, helperRoutes);
 
 // 404 handler
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     error: 'Route not found',
