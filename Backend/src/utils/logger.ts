@@ -30,7 +30,7 @@ class Logger {
     }
   }
 
-  private shouldLog(_level: LogLevel): boolean {
+  private shouldLog(level: LogLevel): boolean {
     const levels = [LogLevel.ERROR, LogLevel.WARN, LogLevel.INFO, LogLevel.DEBUG];
     const currentLevelIndex = levels.indexOf(this.logLevel);
     const requestedLevelIndex = levels.indexOf(_level);
