@@ -11,7 +11,7 @@ class AuthController {
   /**
    * Register new user
    */
-  async register(req: Request, res: Response, next: NextFunction) {
+  async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     const client = await pool.connect();
 
     try {
@@ -28,27 +28,30 @@ class AuthController {
 
       // Validation
       if (!email || !phone || !password || !firstName || !lastName) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Missing required fields',
         });
+        return;
       }
 
       // Email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Invalid email format',
         });
+        return;
       }
 
       // Password validation
       if (password.length < 8) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Password must be at least 8 characters',
         });
+        return;
       }
 
       await client.query('BEGIN');
@@ -61,10 +64,11 @@ class AuthController {
 
       if (userCheck.rows.length > 0) {
         await client.query('ROLLBACK');
-        return res.status(409).json({
+        res.status(409).json({
           success: false,
           error: 'User with this email or phone already exists',
         });
+        return;
       }
 
       // Hash password
@@ -128,15 +132,16 @@ class AuthController {
   /**
    * Login user
    */
-  async login(req: Request, res: Response, next: NextFunction) {
+  async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Email and password required',
         });
+        return;
       }
 
       // Get user with password
@@ -150,10 +155,11 @@ class AuthController {
       );
 
       if (result.rows.length === 0) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid credentials',
         });
+        return;
       }
 
       const user = result.rows[0];
@@ -161,10 +167,11 @@ class AuthController {
       // Verify password
       const validPassword = await bcrypt.compare(password, user.password_hash);
       if (!validPassword) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid credentials',
         });
+        return;
       }
 
       // Generate tokens
@@ -211,15 +218,16 @@ class AuthController {
   /**
    * Refresh access token
    */
-  async refreshToken(req: Request, res: Response, next: NextFunction) {
+  async refreshToken(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { refreshToken } = req.body;
 
       if (!refreshToken) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Refresh token required',
         });
+        return;
       }
 
       // Verify refresh token
@@ -228,10 +236,11 @@ class AuthController {
       // Check if token exists in Redis
       const storedToken = await redisClient.get(`refresh_token:${decoded.userId}`);
       if (storedToken !== refreshToken) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid refresh token',
         });
+        return;
       }
 
       // Get user
@@ -241,10 +250,11 @@ class AuthController {
       );
 
       if (result.rows.length === 0) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'User not found',
         });
+        return;
       }
 
       const user = result.rows[0];
@@ -264,10 +274,11 @@ class AuthController {
       });
     } catch (error) {
       if (error instanceof jwt.JsonWebTokenError) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid token',
         });
+        return;
       }
       next(error);
     }
@@ -276,15 +287,16 @@ class AuthController {
   /**
    * Forgot password
    */
-  async forgotPassword(req: Request, res: Response, next: NextFunction) {
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { email } = req.body;
 
       if (!email) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Email required',
         });
+        return;
       }
 
       // Check if user exists
@@ -295,10 +307,11 @@ class AuthController {
 
       // Always return success to prevent email enumeration
       if (result.rows.length === 0) {
-        return res.json({
+        res.json({
           success: true,
           message: 'If the email exists, a reset link has been sent',
         });
+        return;
       }
 
       const user = result.rows[0];
@@ -334,24 +347,26 @@ class AuthController {
   /**
    * Reset password
    */
-  async resetPassword(req: Request, res: Response, next: NextFunction) {
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     const client = await pool.connect();
 
     try {
       const { token, newPassword } = req.body;
 
       if (!token || !newPassword) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Token and new password required',
         });
+        return;
       }
 
       if (newPassword.length < 8) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Password must be at least 8 characters',
         });
+        return;
       }
 
       // Verify token
@@ -360,10 +375,11 @@ class AuthController {
       // Check if token exists in Redis
       const storedToken = await redisClient.get(`password_reset:${decoded.userId}`);
       if (storedToken !== token) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid or expired reset token',
         });
+        return;
       }
 
       await client.query('BEGIN');
@@ -392,10 +408,11 @@ class AuthController {
     } catch (error) {
       await client.query('ROLLBACK');
       if (error instanceof jwt.JsonWebTokenError) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid or expired token',
         });
+        return;
       }
       next(error);
     } finally {
@@ -406,15 +423,16 @@ class AuthController {
   /**
    * Verify email
    */
-  async verifyEmail(req: Request, res: Response, next: NextFunction) {
+  async verifyEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { token } = req.body;
 
       if (!token) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Verification token required',
         });
+        return;
       }
 
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
@@ -430,10 +448,11 @@ class AuthController {
       });
     } catch (error) {
       if (error instanceof jwt.JsonWebTokenError) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid or expired token',
         });
+        return;
       }
       next(error);
     }
@@ -442,7 +461,7 @@ class AuthController {
   /**
    * Logout
    */
-  async logout(req: Request, res: Response, next: NextFunction) {
+  async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req as any).user.userId;
 
