@@ -33,7 +33,7 @@ class Logger {
   private shouldLog(level: LogLevel): boolean {
     const levels = [LogLevel.ERROR, LogLevel.WARN, LogLevel.INFO, LogLevel.DEBUG];
     const currentLevelIndex = levels.indexOf(this.logLevel);
-    const requestedLevelIndex = levels.indexOf(_level);
+    const requestedLevelIndex = levels.indexOf(level);
     return requestedLevelIndex <= currentLevelIndex;
   }
 
@@ -43,7 +43,7 @@ class Logger {
     return `[${timestamp}] [${level}] ${message}${metaStr}`;
   }
 
-  private writeToFile(level: LogLevel, message: string) {
+  private writeToFile(_level: LogLevel, message: string) {
     const date = new Date().toISOString().split('T')[0];
     const filename = `${date}.log`;
     const filepath = path.join(this.logDir, filename);
