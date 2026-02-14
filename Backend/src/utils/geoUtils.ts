@@ -155,7 +155,7 @@ export const reverseGeocode = async (
  * Forward geocoding (address to coordinates)
  */
 export const geocodeAddress = async (
-  address: string
+  _address: string
 ): Promise<{ latitude: number; longitude: number } | null> => {
   // TODO: Implement with Google Maps Geocoding API
   return null;
