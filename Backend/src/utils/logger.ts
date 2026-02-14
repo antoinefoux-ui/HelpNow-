@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { Request, Response, NextFunction } from 'express';
 
 export enum LogLevel {
   ERROR = 'ERROR',
@@ -29,10 +30,10 @@ class Logger {
     }
   }
 
-  private shouldLog(level: LogLevel): boolean {
+  private shouldLog(_level: LogLevel): boolean {
     const levels = [LogLevel.ERROR, LogLevel.WARN, LogLevel.INFO, LogLevel.DEBUG];
     const currentLevelIndex = levels.indexOf(this.logLevel);
-    const requestedLevelIndex = levels.indexOf(level);
+    const requestedLevelIndex = levels.indexOf(_level);
     return requestedLevelIndex <= currentLevelIndex;
   }
 
@@ -149,7 +150,7 @@ class Logger {
 export const logger = new Logger();
 
 // Express middleware for request logging
-export const requestLogger = (req: any, res: any, next: any) => {
+export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
   const start = Date.now();
   
   logger.request(req);
