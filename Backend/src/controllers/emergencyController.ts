@@ -525,7 +525,7 @@ class EmergencyController {
   /**
    * Upload voice note
    */
-  async uploadVoiceNote(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async uploadVoiceNote(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       // TODO: Implement file upload to OVH Object Storage
       
