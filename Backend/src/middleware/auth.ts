@@ -17,15 +17,16 @@ export const authenticateToken = (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       error: 'Access token required',
     });
+    return;
   }
 
   try {
@@ -38,13 +39,14 @@ export const authenticateToken = (
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Token expired',
       });
+      return;
     }
 
-    return res.status(403).json({
+    res.status(403).json({
       success: false,
       error: 'Invalid token',
     });
@@ -56,14 +58,15 @@ export const authenticateToken = (
  */
 export const optionalAuth = (
   req: AuthRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
-) => {
+): void => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return next();
+    next();
+    return;
   }
 
   try {
@@ -87,12 +90,13 @@ export const requireHelper = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   if (!req.user) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       error: 'Authentication required',
     });
+    return;
   }
 
   try {
@@ -103,10 +107,11 @@ export const requireHelper = async (
     );
 
     if (result.rows.length === 0 || !result.rows[0].is_helper) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         error: 'Helper access required',
       });
+      return;
     }
 
     next();
@@ -122,12 +127,13 @@ export const requireVerified = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   if (!req.user) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       error: 'Authentication required',
     });
+    return;
   }
 
   try {
@@ -138,10 +144,11 @@ export const requireVerified = async (
     );
 
     if (result.rows.length === 0 || !result.rows[0].verified) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         error: 'Email verification required',
       });
+      return;
     }
 
     next();
