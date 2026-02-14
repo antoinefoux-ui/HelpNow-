@@ -13,9 +13,9 @@
     "build:ios": "cd ios && xcodebuild -workspace HelpNow.xcworkspace -scheme HelpNow -configuration Release"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-native": "^0.73.0",
-    "react-native-maps": "^1.10.0",
+    "react": "18.2.0",
+    "react-native": "0.73.6",
+    "react-native-maps": "1.10.3",
     "react-native-geolocation-service": "^5.3.1",
     "react-native-permissions": "^4.0.0",
     "@react-navigation/native": "^6.1.9",
