@@ -6,17 +6,18 @@ class UserController {
   /**
    * Get user by ID
    */
-  async getUserById(req: Request, res: Response, next: NextFunction) {
+  async getUserById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
 
       // Try cache first
       const cached = await redisClient.get(`user:${id}`);
       if (cached) {
-        return res.json({
+        res.json({
           success: true,
           data: JSON.parse(cached),
         });
+        return;
       }
 
       // Get user from database
@@ -29,10 +30,11 @@ class UserController {
       );
 
       if (userResult.rows.length === 0) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'User not found',
         });
+        return;
       }
 
       const user = userResult.rows[0];
@@ -91,7 +93,7 @@ class UserController {
   /**
    * Update user profile
    */
-  async updateUser(req: Request, res: Response, next: NextFunction) {
+  async updateUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     const client = await pool.connect();
 
     try {
@@ -134,10 +136,11 @@ class UserController {
 
       if (updates.length === 0) {
         await client.query('ROLLBACK');
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'No fields to update',
         });
+        return;
       }
 
       updates.push(`updated_at = NOW()`);
@@ -172,7 +175,7 @@ class UserController {
   /**
    * Delete user account
    */
-  async deleteUser(req: Request, res: Response, next: NextFunction) {
+  async deleteUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     const client = await pool.connect();
 
     try {
@@ -207,7 +210,7 @@ class UserController {
   /**
    * Upload profile photo
    */
-  async uploadPhoto(req: Request, res: Response, next: NextFunction) {
+  async uploadPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
       
@@ -235,7 +238,7 @@ class UserController {
   /**
    * Add address
    */
-  async addAddress(req: Request, res: Response, next: NextFunction) {
+  async addAddress(req: Request, res: Response, next: NextFunction): Promise<void> {
     const client = await pool.connect();
 
     try {
@@ -299,7 +302,7 @@ class UserController {
   /**
    * Update address
    */
-  async updateAddress(req: Request, res: Response, next: NextFunction) {
+  async updateAddress(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id, addressId } = req.params;
       const updates = req.body;
@@ -346,7 +349,7 @@ class UserController {
   /**
    * Delete address
    */
-  async deleteAddress(req: Request, res: Response, next: NextFunction) {
+  async deleteAddress(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id, addressId } = req.params;
 
@@ -369,7 +372,7 @@ class UserController {
   /**
    * Add emergency contact
    */
-  async addEmergencyContact(req: Request, res: Response, next: NextFunction) {
+  async addEmergencyContact(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
       const { name, phone, relationship } = req.body;
@@ -395,7 +398,7 @@ class UserController {
   /**
    * Delete emergency contact
    */
-  async deleteEmergencyContact(req: Request, res: Response, next: NextFunction) {
+  async deleteEmergencyContact(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id, contactId } = req.params;
 
