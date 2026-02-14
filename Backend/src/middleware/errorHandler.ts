@@ -10,10 +10,10 @@ interface CustomError extends Error {
  */
 export const errorHandler = (
   err: CustomError,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
-) => {
+  _next: NextFunction
+): void => {
   console.error('Error:', err);
 
   // Default error
@@ -58,7 +58,7 @@ export const errorHandler = (
 /**
  * 404 Not Found handler
  */
-export const notFoundHandler = (req: Request, res: Response) => {
+export const notFoundHandler = (req: Request, res: Response): void => {
   res.status(404).json({
     success: false,
     error: 'Route not found',
