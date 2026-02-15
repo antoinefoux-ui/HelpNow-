@@ -531,38 +531,7 @@ class EmergencyController {
   async uploadVoiceNote(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      const requesterId = (req as Request & { user?: { userId?: string } }).user?.userId;
       const file = req.file;
-
-      if (!requesterId) {
-        res.status(401).json({
-          success: false,
-          error: 'Authentication required',
-        });
-        return;
-      }
-
-      const emergencyResult = await pool.query(
-        `SELECT seeker_id, accepted_helper_id FROM emergency_requests WHERE id = $1`,
-        [id]
-      );
-
-      if (emergencyResult.rows.length === 0) {
-        res.status(404).json({
-          success: false,
-          error: 'Emergency not found',
-        });
-        return;
-      }
-
-      const emergency = emergencyResult.rows[0];
-      if (requesterId !== emergency.seeker_id && requesterId !== emergency.accepted_helper_id) {
-        res.status(403).json({
-          success: false,
-          error: 'Not authorized to upload voice note for this emergency',
-        });
-        return;
-      }
 
       if (!file) {
         res.status(400).json({

@@ -213,16 +213,7 @@ class UserController {
   async uploadPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      const requesterId = (req as Request & { user?: { userId?: string } }).user?.userId;
       const file = req.file;
-
-      if (!requesterId || requesterId !== id) {
-        res.status(403).json({
-          success: false,
-          error: 'You can only upload your own profile photo',
-        });
-        return;
-      }
 
       if (!file) {
         res.status(400).json({
