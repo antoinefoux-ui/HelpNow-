@@ -6,11 +6,14 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
-    "start": "react-native start",
+    "start": "expo start",
     "test": "jest",
     "lint": "eslint .",
     "build:android": "cd android && ./gradlew assembleRelease",
-    "build:ios": "cd ios && xcodebuild -workspace HelpNow.xcworkspace -scheme HelpNow -configuration Release"
+    "build:ios": "cd ios && xcodebuild -workspace HelpNow.xcworkspace -scheme HelpNow -configuration Release",
+    "start:clear": "EXPO_OFFLINE=1 expo start --clear --offline",
+    "start:offline": "EXPO_OFFLINE=1 expo start --clear --offline",
+    "start:online-clear": "expo start --clear"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
