@@ -21,13 +21,6 @@ const upload = multer({
 router.post('/', emergencyController.createEmergency);
 
 /**
- * @route   GET /api/v1/emergencies/:id
- * @desc    Get emergency by ID
- * @access  Private
- */
-router.get('/:id', emergencyController.getEmergency);
-
-/**
  * @route   GET /api/v1/emergencies/active/:userId
  * @desc    Get active emergency for user
  * @access  Private
