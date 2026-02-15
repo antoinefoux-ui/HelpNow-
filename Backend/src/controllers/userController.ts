@@ -251,10 +251,6 @@ class UserController {
   async uploadPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      if (!this.ensureOwner(req, res)) {
-        return;
-      }
-
       const file = req.file;
 
       if (!file) {
