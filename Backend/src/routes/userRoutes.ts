@@ -2,6 +2,12 @@ import express, { Router } from 'express';
 import multer from 'multer';
 import { userController } from '../controllers/userController';
 import { authenticateToken } from '../middleware/auth';
+import {
+  validate,
+  updateUserSchema,
+  addressSchema,
+  emergencyContactSchema,
+} from '../middleware/validation';
 
 const router: Router = express.Router();
 
@@ -25,7 +31,7 @@ router.get('/:id', userController.getUserById);
  * @desc    Update user profile
  * @access  Private
  */
-router.put('/:id', userController.updateUser);
+router.put('/:id', validate(updateUserSchema), userController.updateUser);
 
 /**
  * @route   DELETE /api/v1/users/:id
@@ -46,7 +52,7 @@ router.post('/:id/photo', upload.single('photo'), userController.uploadPhoto);
  * @desc    Add new address
  * @access  Private
  */
-router.post('/:id/addresses', userController.addAddress);
+router.post('/:id/addresses', validate(addressSchema), userController.addAddress);
 
 /**
  * @route   PUT /api/v1/users/:id/addresses/:addressId
@@ -67,7 +73,7 @@ router.delete('/:id/addresses/:addressId', userController.deleteAddress);
  * @desc    Add emergency contact
  * @access  Private
  */
-router.post('/:id/emergency-contacts', userController.addEmergencyContact);
+router.post('/:id/emergency-contacts', validate(emergencyContactSchema), userController.addEmergencyContact);
 
 /**
  * @route   DELETE /api/v1/users/:id/emergency-contacts/:contactId

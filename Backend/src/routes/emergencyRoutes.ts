@@ -2,6 +2,7 @@ import express, { Router } from 'express';
 import multer from 'multer';
 import { emergencyController } from '../controllers/emergencyController';
 import { authenticateToken } from '../middleware/auth';
+import { validate, emergencyRequestSchema } from '../middleware/validation';
 
 const router: Router = express.Router();
 

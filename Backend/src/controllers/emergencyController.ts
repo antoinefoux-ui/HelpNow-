@@ -5,6 +5,9 @@ import { redisClient } from '../config/redis';
 import { reverseGeocode } from '../utils/geoUtils';
 
 class EmergencyController {
+  private getRequesterId(req: Request): string | undefined {
+    return (req as RequestWithUser).user?.userId;
+  }
   /**
    * Create new emergency request
    */
@@ -215,6 +218,15 @@ class EmergencyController {
   async getActiveEmergency(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
+      const requesterId = this.getRequesterId(req);
+
+      if (!requesterId || requesterId !== userId) {
+        res.status(403).json({
+          success: false,
+          error: 'Not authorized to access this emergency resource',
+        });
+        return;
+      }
 
       const result = await pool.query(
         `SELECT * FROM emergency_requests 
@@ -295,6 +307,15 @@ class EmergencyController {
     try {
       const { userId } = req.params;
       const { limit = 20 } = req.query;
+      const requesterId = this.getRequesterId(req);
+
+      if (!requesterId || requesterId !== userId) {
+        res.status(403).json({
+          success: false,
+          error: 'Not authorized to access this emergency resource',
+        });
+        return;
+      }
 
       const result = await pool.query(
         `SELECT 
