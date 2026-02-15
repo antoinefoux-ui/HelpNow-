@@ -120,7 +120,7 @@ const HelperModeScreen: React.FC = () => {
   // Mock statistics - TODO: Get from backend
   const stats = {
     totalHelps: user?.totalHelps || 0,
-    avgResponseTime: user?.helperProfile?.averageResponseTime || 0,
+    avgResponseTime: user?.helperProfile?.responseTime || 0,
     rating: user?.rating || 0,
     successfulHelps: user?.helperProfile?.successfulHelps || 0,
   };

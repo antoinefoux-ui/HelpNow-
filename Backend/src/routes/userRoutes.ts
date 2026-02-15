@@ -1,4 +1,5 @@
 import express, { Router } from 'express';
+import multer from 'multer';
 import { userController } from '../controllers/userController';
 import { authenticateToken } from '../middleware/auth';
 
@@ -6,6 +7,18 @@ const router: Router = express.Router();
 
 // All routes require authentication
 router.use(authenticateToken);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      cb(new Error('Only image files are allowed'));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 /**
  * @route   GET /api/v1/users/:id
@@ -33,7 +46,7 @@ router.delete('/:id', userController.deleteUser);
  * @desc    Upload profile photo
  * @access  Private
  */
-router.post('/:id/photo', userController.uploadPhoto);
+router.post('/:id/photo', upload.single('photo'), userController.uploadPhoto);
 
 /**
  * @route   POST /api/v1/users/:id/addresses
