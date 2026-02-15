@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import pool from '../config/database'; // Adjust import path as needed
+import { pool } from '../config/database';
 
 class EmergencyController {
   /**
@@ -37,6 +37,9 @@ class EmergencyController {
       next(error);
     }
   }
+
+  // Add your other controller methods here
 }
 
+// Export as default
 export default new EmergencyController();
