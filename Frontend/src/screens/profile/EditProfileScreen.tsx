@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useAuth } from '../../contexts/AuthContext';
-import { RootStackParamList } from '../../types';
+import { RootStackParamList, User } from '../../types';
 
 type EditProfileNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -25,13 +25,13 @@ const EditProfileScreen: React.FC = () => {
   const { user, updateUser } = useAuth();
 
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Pick<User, 'firstName' | 'lastName' | 'email' | 'phone' | 'dateOfBirth' | 'gender'>>({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
     phone: user?.phone || '',
     dateOfBirth: user?.dateOfBirth || '',
-    gender: user?.gender || '',
+    gender: user?.gender || 'prefer_not_to_say',
   });
 
   const handleSave = async () => {
@@ -55,8 +55,8 @@ const EditProfileScreen: React.FC = () => {
     }
   };
 
-  const updateField = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const updateField = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -151,7 +151,7 @@ const EditProfileScreen: React.FC = () => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('profile.gender')}</Text>
             <View style={styles.genderOptions}>
-              {['male', 'female', 'other', 'prefer_not_to_say'].map((option) => (
+              {(['male', 'female', 'other', 'prefer_not_to_say'] as const).map((option) => (
                 <TouchableOpacity
                   key={option}
                   style={[

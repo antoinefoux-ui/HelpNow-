@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 
 interface CustomError extends Error {
   status?: number;
@@ -39,6 +40,20 @@ export const errorHandler = (
   } else if (err.name === 'UnauthorizedError') {
     status = 401;
     message = 'Unauthorized';
+  } else if (err instanceof multer.MulterError) {
+    status = 400;
+
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'Uploaded file is too large';
+    } else {
+      message = 'Invalid file upload';
+    }
+  } else if (
+    err.message === 'Only audio files are allowed' ||
+    err.message === 'Only image files are allowed'
+  ) {
+    status = 400;
+    message = err.message;
   }
 
   // Don't leak error details in production
