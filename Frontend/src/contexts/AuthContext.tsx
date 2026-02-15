@@ -16,6 +16,35 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const buildFallbackUser = (
+  firebaseUser: { uid: string; email?: string | null; displayName?: string | null },
+  overrides: Partial<User> = {}
+): User => {
+  const [firstNameFromDisplay = '', lastNameFromDisplay = ''] = (firebaseUser.displayName || '').split(' ');
+
+  return {
+    id: firebaseUser.uid,
+    email: firebaseUser.email || overrides.email || '',
+    phone: overrides.phone || '',
+    firstName: overrides.firstName || firstNameFromDisplay || 'User',
+    lastName: overrides.lastName || lastNameFromDisplay || '',
+    profilePhoto: overrides.profilePhoto,
+    dateOfBirth: overrides.dateOfBirth || '',
+    gender: overrides.gender || 'prefer_not_to_say',
+    createdAt: overrides.createdAt || new Date(),
+    isHelper: overrides.isHelper || false,
+    isActive: overrides.isActive ?? true,
+    language: overrides.language || 'en',
+    emergencyContacts: overrides.emergencyContacts || [],
+    addresses: overrides.addresses || [],
+    medicalInfo: overrides.medicalInfo,
+    helperProfile: overrides.helperProfile,
+    rating: overrides.rating || 0,
+    totalHelps: overrides.totalHelps || 0,
+    verified: overrides.verified || false,
+  };
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);

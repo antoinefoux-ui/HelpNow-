@@ -531,7 +531,7 @@ class EmergencyController {
     try {
       res.json({
         success: true,
-        message: 'Voice note upload endpoint',
+        data: { voiceNoteUrl },
       });
     } catch (error) {
       next(error);
