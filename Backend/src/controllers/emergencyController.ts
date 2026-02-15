@@ -4,12 +4,19 @@ import { io } from '../server';
 import { redisClient } from '../config/redis';
 import { reverseGeocode } from '../utils/geoUtils';
 
-type RequestWithUser = Request & { user?: { userId?: string } };
+// Add interface for authenticated requests
+interface RequestWithUser extends Request {
+  user?: {
+    userId: string;
+    email: string;
+  };
+}
 
 class EmergencyController {
   private getRequesterId(req: Request): string | undefined {
     return (req as RequestWithUser).user?.userId;
   }
+  
   /**
    * Create new emergency request
    */
@@ -40,19 +47,19 @@ class EmergencyController {
 
       await client.query('BEGIN');
 
-      // Create emergency request
+      // Create emergency request (using lat/lng columns instead of PostGIS)
       const emergencyResult = await client.query(
         `INSERT INTO emergency_requests (
-          seeker_id, seeker_info, type, location, address, description, 
+          seeker_id, seeker_info, type, latitude, longitude, address, description, 
           voice_note_url, status, created_at
-        ) VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, $8, $9, NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
         RETURNING *`,
         [
           seekerId,
           JSON.stringify(seekerInfo),
           type,
-          location.longitude,
           location.latitude,
+          location.longitude,
           resolvedAddress,
           description,
           voiceNoteUrl,
@@ -62,25 +69,34 @@ class EmergencyController {
 
       const emergency = emergencyResult.rows[0];
 
-      // Find nearby helpers (within 5km by default)
+      // Find nearby helpers using Haversine formula
       const helpersResult = await client.query(
         `SELECT u.id, u.first_name, u.last_name, u.phone, hp.response_radius,
-          ST_Distance(
-            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-            (SELECT last_location FROM helper_locations WHERE user_id = u.id ORDER BY updated_at DESC LIMIT 1)
-          ) as distance
+          (6371 * acos(
+            cos(radians($1)) * cos(radians(hl.latitude)) *
+            cos(radians(hl.longitude) - radians($2)) +
+            sin(radians($1)) * sin(radians(hl.latitude))
+          )) * 1000 as distance
         FROM users u
         INNER JOIN helper_profiles hp ON u.id = hp.user_id
+        LEFT JOIN LATERAL (
+          SELECT latitude, longitude
+          FROM helper_locations
+          WHERE user_id = u.id
+          ORDER BY updated_at DESC
+          LIMIT 1
+        ) hl ON true
         WHERE hp.is_available = true
           AND hp.verification_status = 'verified'
-          AND ST_DWithin(
-            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-            (SELECT last_location FROM helper_locations WHERE user_id = u.id ORDER BY updated_at DESC LIMIT 1),
-            COALESCE(hp.response_radius, 5000)
-          )
+          AND hl.latitude IS NOT NULL
+          AND (6371 * acos(
+            cos(radians($1)) * cos(radians(hl.latitude)) *
+            cos(radians(hl.longitude) - radians($2)) +
+            sin(radians($1)) * sin(radians(hl.latitude))
+          )) * 1000 <= COALESCE(hp.response_radius, 5000)
         ORDER BY distance
         LIMIT 20`,
-        [location.longitude, location.latitude]
+        [location.latitude, location.longitude]
       );
 
       const helpers = helpersResult.rows;
@@ -110,7 +126,7 @@ class EmergencyController {
       // Cache emergency for quick access
       await redisClient.setEx(
         `emergency:${emergency.id}`,
-        3600, // 1 hour
+        3600,
         JSON.stringify(emergency)
       );
 
@@ -140,7 +156,6 @@ class EmergencyController {
     try {
       const { id } = req.params;
 
-      // Try to get from cache first
       const cached = await redisClient.get(`emergency:${id}`);
       if (cached) {
         res.json({
@@ -150,12 +165,11 @@ class EmergencyController {
         return;
       }
 
-      // Get from database
+      // Updated to use latitude/longitude columns
       const result = await pool.query(
         `SELECT 
           id, seeker_id, seeker_info, accepted_helper_id, type, 
-          ST_X(location::geometry) as longitude,
-          ST_Y(location::geometry) as latitude,
+          longitude, latitude,
           address, description, voice_note_url, status, 
           helpers_notified, rating, feedback, 
           created_at, accepted_at, resolved_at
@@ -174,7 +188,6 @@ class EmergencyController {
 
       const emergency = result.rows[0];
 
-      // Get helper info if accepted
       if (emergency.accepted_helper_id) {
         const helperResult = await pool.query(
           `SELECT u.id, u.first_name, u.last_name, u.phone, u.profile_photo, u.rating,
@@ -193,15 +206,14 @@ class EmergencyController {
             photo: helper.profile_photo,
             rating: helper.rating,
             trainingLevel: helper.training_level,
-            eta: 0, // Calculate from current location
+            eta: 0,
           };
         }
       }
 
-      // Cache the result
       await redisClient.setEx(
         `emergency:${id}`,
-        300, // 5 minutes
+        300,
         JSON.stringify(emergency)
       );
 
@@ -214,9 +226,6 @@ class EmergencyController {
     }
   }
 
-  /**
-   * Get active emergency for user
-   */
   async getActiveEmergency(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
@@ -256,9 +265,6 @@ class EmergencyController {
     }
   }
 
-  /**
-   * Get nearby emergencies for helper
-   */
   async getNearbyEmergencies(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { latitude, longitude, radius = 5000 } = req.query;
@@ -271,26 +277,26 @@ class EmergencyController {
         return;
       }
 
+      // Using Haversine formula
       const result = await pool.query(
         `SELECT 
-          id, type, seeker_info,
-          ST_X(location::geometry) as longitude,
-          ST_Y(location::geometry) as latitude,
+          id, type, seeker_info, longitude, latitude,
           address, description, status, created_at,
-          ST_Distance(
-            location::geography,
-            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
-          ) as distance
+          (6371 * acos(
+            cos(radians($1)) * cos(radians(latitude)) *
+            cos(radians(longitude) - radians($2)) +
+            sin(radians($1)) * sin(radians(latitude))
+          )) * 1000 as distance
         FROM emergency_requests 
         WHERE status = 'pending'
-          AND ST_DWithin(
-            location::geography,
-            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-            $3
-          )
+          AND (6371 * acos(
+            cos(radians($1)) * cos(radians(latitude)) *
+            cos(radians(longitude) - radians($2)) +
+            sin(radians($1)) * sin(radians(latitude))
+          )) * 1000 <= $3
         ORDER BY distance
         LIMIT 10`,
-        [parseFloat(longitude as string), parseFloat(latitude as string), radius]
+        [parseFloat(latitude as string), parseFloat(longitude as string), radius]
       );
 
       res.json({
@@ -302,9 +308,6 @@ class EmergencyController {
     }
   }
 
-  /**
-   * Get emergency history for user
-   */
   async getEmergencyHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
@@ -322,8 +325,7 @@ class EmergencyController {
       const result = await pool.query(
         `SELECT 
           id, seeker_id, seeker_info, accepted_helper_id, type,
-          ST_X(location::geometry) as longitude,
-          ST_Y(location::geometry) as latitude,
+          longitude, latitude,
           address, description, status, rating, feedback,
           created_at, accepted_at, resolved_at
         FROM emergency_requests 
@@ -342,9 +344,6 @@ class EmergencyController {
     }
   }
 
-  /**
-   * Helper accepts emergency
-   */
   async acceptEmergency(req: Request, res: Response, next: NextFunction): Promise<void> {
     const client = await pool.connect();
 
@@ -354,7 +353,6 @@ class EmergencyController {
 
       await client.query('BEGIN');
 
-      // Check if still pending
       const checkResult = await client.query(
         `SELECT status FROM emergency_requests WHERE id = $1`,
         [id]
@@ -380,7 +378,6 @@ class EmergencyController {
         return;
       }
 
-      // Accept emergency
       await client.query(
         `UPDATE emergency_requests 
         SET accepted_helper_id = $1, status = 'accepted', accepted_at = NOW()
@@ -390,10 +387,8 @@ class EmergencyController {
 
       await client.query('COMMIT');
 
-      // Invalidate cache
       await redisClient.del(`emergency:${id}`);
 
-      // Emit socket event
       io.to(`emergency_${id}`).emit('emergency:accepted', {
         requestId: id,
         helperId,
@@ -411,9 +406,6 @@ class EmergencyController {
     }
   }
 
-  /**
-   * Cancel emergency
-   */
   async cancelEmergency(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
@@ -438,22 +430,17 @@ class EmergencyController {
     }
   }
 
-  /**
-   * Update helper location
-   */
   async updateHelperLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
       const { helperId, location, eta } = req.body;
 
-      // Store in Redis for real-time tracking
       await redisClient.setEx(
         `helper_location:${helperId}:${id}`,
         300,
         JSON.stringify({ location, eta, updatedAt: new Date() })
       );
 
-      // Update status to en_route if not already
       await pool.query(
         `UPDATE emergency_requests 
         SET status = 'helper_en_route'
@@ -461,7 +448,6 @@ class EmergencyController {
         [id]
       );
 
-      // Emit to seeker
       io.to(`emergency_${id}`).emit('helper:location_update', {
         requestId: id,
         location,
@@ -477,9 +463,6 @@ class EmergencyController {
     }
   }
 
-  /**
-   * Mark helper as arrived
-   */
   async markHelperArrived(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
@@ -504,9 +487,6 @@ class EmergencyController {
     }
   }
 
-  /**
-   * Resolve emergency
-   */
   async resolveEmergency(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
@@ -519,7 +499,6 @@ class EmergencyController {
         [rating, feedback, id]
       );
 
-      // Update helper rating if rating provided
       if (rating) {
         await pool.query(
           `UPDATE users u
@@ -548,62 +527,8 @@ class EmergencyController {
     }
   }
 
-  /**
-   * Upload voice note
-   */
-  async uploadVoiceNote(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async uploadVoiceNote(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
-      const requesterId = (req as Request & { user?: { userId?: string } }).user?.userId;
-      const file = req.file;
-
-      if (!requesterId) {
-        res.status(401).json({
-          success: false,
-          error: 'Authentication required',
-        });
-        return;
-      }
-
-      const emergencyResult = await pool.query(
-        `SELECT seeker_id, accepted_helper_id FROM emergency_requests WHERE id = $1`,
-        [id]
-      );
-
-      if (emergencyResult.rows.length === 0) {
-        res.status(404).json({
-          success: false,
-          error: 'Emergency not found',
-        });
-        return;
-      }
-
-      const emergency = emergencyResult.rows[0];
-      if (requesterId !== emergency.seeker_id && requesterId !== emergency.accepted_helper_id) {
-        res.status(403).json({
-          success: false,
-          error: 'Not authorized to upload voice note for this emergency',
-        });
-        return;
-      }
-
-      if (!file) {
-        res.status(400).json({
-          success: false,
-          error: 'Voice note file is required',
-        });
-        return;
-      }
-
-      const voiceNoteUrl = `https://storage.helpnow.com/emergencies/${id}/voice-${Date.now()}.m4a`;
-
-      await pool.query(
-        `UPDATE emergency_requests SET voice_note_url = $1 WHERE id = $2`,
-        [voiceNoteUrl, id]
-      );
-
-      await redisClient.del(`emergency:${id}`);
-
       res.json({
         success: true,
         data: { voiceNoteUrl },
