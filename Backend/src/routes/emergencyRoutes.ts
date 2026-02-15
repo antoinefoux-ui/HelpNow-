@@ -1,4 +1,5 @@
 import express, { Router } from 'express';
+import multer from 'multer';
 import { emergencyController } from '../controllers/emergencyController';
 import { authenticateToken } from '../middleware/auth';
 
@@ -7,19 +8,17 @@ const router: Router = express.Router();
 // All routes require authentication
 router.use(authenticateToken);
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
 /**
  * @route   POST /api/v1/emergencies
  * @desc    Create new emergency request
  * @access  Private
  */
 router.post('/', emergencyController.createEmergency);
-
-/**
- * @route   GET /api/v1/emergencies/:id
- * @desc    Get emergency by ID
- * @access  Private
- */
-router.get('/:id', emergencyController.getEmergency);
 
 /**
  * @route   GET /api/v1/emergencies/active/:userId
@@ -82,6 +81,6 @@ router.post('/:id/resolve', emergencyController.resolveEmergency);
  * @desc    Upload voice note for emergency
  * @access  Private
  */
-router.post('/:id/voice-note', emergencyController.uploadVoiceNote);
+router.post('/:id/voice-note', upload.single('audio'), emergencyController.uploadVoiceNote);
 
 export default router;

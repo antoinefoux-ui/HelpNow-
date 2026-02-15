@@ -30,13 +30,13 @@ const ForgotPasswordScreen: React.FC = () => {
   const [emailSent, setEmailSent] = useState(false);
   const [error, setError] = useState('');
 
-  const validateEmail = (email: string): boolean => {
+  const validateEmail = (value: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
+    if (!value) {
       setError('Email is required');
       return false;
     }
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(value)) {
       setError('Invalid email format');
       return false;
     }
@@ -61,12 +61,12 @@ const ForgotPasswordScreen: React.FC = () => {
           },
         ]
       );
-    } catch (error: any) {
+    } catch (err: any) {
       let errorMessage = 'Failed to send reset email';
       
-      if (error.code === 'auth/user-not-found') {
+      if (err.code === 'auth/user-not-found') {
         errorMessage = 'No account found with this email';
-      } else if (error.code === 'auth/too-many-requests') {
+      } else if (err.code === 'auth/too-many-requests') {
         errorMessage = 'Too many attempts. Please try again later';
       }
 

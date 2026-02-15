@@ -1,14 +1,15 @@
 {
+  "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
     "target": "esnext",
-    "module": "commonjs",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "lib": ["es2017", "es2019", "es2020"],
     "allowJs": true,
     "jsx": "react-native",
     "noEmit": true,
     "isolatedModules": true,
     "strict": true,
-    "moduleResolution": "node",
     "baseUrl": "./src",
     "paths": {
       "@components/*": ["components/*"],
@@ -26,7 +27,6 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true
   },
-  "extends": "@react-native/typescript-config/tsconfig.json",
   "include": ["src/**/*"],
   "exclude": ["node_modules", "babel.config.js", "metro.config.js"]
 }

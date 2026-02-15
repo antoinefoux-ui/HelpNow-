@@ -213,11 +213,17 @@ class UserController {
   async uploadPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      
-      // TODO: Implement file upload to OVH Object Storage
-      // For now, return placeholder
-      
-      const photoUrl = `https://storage.helpnow.com/users/${id}/profile.jpg`;
+      const file = req.file;
+
+      if (!file) {
+        res.status(400).json({
+          success: false,
+          error: 'Profile photo file is required',
+        });
+        return;
+      }
+
+      const photoUrl = `https://storage.helpnow.com/users/${id}/profile-${Date.now()}.jpg`;
 
       await pool.query(
         `UPDATE users SET profile_photo = $1, updated_at = NOW() WHERE id = $2`,

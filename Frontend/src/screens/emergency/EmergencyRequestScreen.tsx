@@ -106,7 +106,7 @@ const EmergencyRequestScreen: React.FC = () => {
       setLoading(true);
 
       // Get current location
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      const position = await new Promise<Geolocation.GeoPosition>((resolve, reject) => {
         Geolocation.getCurrentPosition(
           resolve,
           reject,
