@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import auth from '@react-native-firebase/auth';
 import { User } from '../types';
 import { authService } from '../services/authService';
 
@@ -21,33 +20,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // On app start, try to load user + token from storage
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          // Fetch full user data from backend
-          const userData = await authService.getUserData(firebaseUser.uid);
-          setUser(userData);
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-          setUser(null);
+    const initAuth = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
         }
-      } else {
-        setUser(null);
+      } catch (error) {
+        console.error('Error loading auth state:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    };
 
-    return unsubscribe;
+    void initAuth();
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const userCredential = await auth().signInWithEmailAndPassword(email, password);
-      const userData = await authService.getUserData(userCredential.user.uid);
-      setUser(userData);
-    } catch (error: any) {
+
+      // TODO: adapt this to your backend authService implementation
+      // Expecting authService.signIn to return { user, accessToken, refreshToken? }
+      const { user: loggedInUser, accessToken } = await authService.signIn(email, password);
+
+      setUser(loggedInUser);
+      await AsyncStorage.setItem('user', JSON.stringify(loggedInUser));
+      if (accessToken) {
+        await AsyncStorage.setItem('accessToken', accessToken);
+      }
+    } catch (error) {
       console.error('Sign in error:', error);
       throw error;
     } finally {
@@ -58,16 +62,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signUp = async (email: string, password: string, userData: Partial<User>) => {
     try {
       setLoading(true);
-      const userCredential = await auth().createUserWithEmailAndPassword(email, password);
-      
-      // Create user profile in backend
-      const newUser = await authService.createUserProfile(userCredential.user.uid, {
-        email,
-        ...userData,
-      });
-      
+
+      // TODO: adapt this to your backend authService implementation
+      const { user: newUser, accessToken } = await authService.signUp(email, password, userData);
+
       setUser(newUser);
-    } catch (error: any) {
+      await AsyncStorage.setItem('user', JSON.stringify(newUser));
+      if (accessToken) {
+        await AsyncStorage.setItem('accessToken', accessToken);
+      }
+    } catch (error) {
       console.error('Sign up error:', error);
       throw error;
     } finally {
@@ -78,8 +82,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signOut = async () => {
     try {
       setLoading(true);
-      await auth().signOut();
-      await AsyncStorage.clear();
+
+      // Optional: inform backend about logout / token revoke
+      try {
+        await authService.signOut?.();
+      } catch {
+        // backend signOut optional
+      }
+
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('accessToken');
       setUser(null);
     } catch (error) {
       console.error('Sign out error:', error);
@@ -90,20 +102,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const resetPassword = async (email: string) => {
-    try {
-      await auth().sendPasswordResetEmail(email);
-    } catch (error) {
-      console.error('Reset password error:', error);
-      throw error;
-    }
-  };
+  try {
+    // TODO: Implement backend password reset call
+    // For now, just log it
+    console.log('Password reset requested for:', email);
+    
+    // When ready, uncomment and implement:
+    // await authService.resetPassword(email);
+  } catch (error) {
+    console.error('Reset password error:', error);
+    throw error;
+  }
+};
 
   const updateUser = async (userData: Partial<User>) => {
     try {
       if (!user) throw new Error('No user logged in');
-      
+
       const updatedUser = await authService.updateUserProfile(user.id, userData);
       setUser(updatedUser);
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (error) {
       console.error('Update user error:', error);
       throw error;
@@ -113,8 +131,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const refreshUser = async () => {
     try {
       if (!user) return;
-      const userData = await authService.getUserData(user.id);
-      setUser(userData);
+      const freshUser = await authService.getUserData(user.id);
+      setUser(freshUser);
+      await AsyncStorage.setItem('user', JSON.stringify(freshUser));
     } catch (error) {
       console.error('Refresh user error:', error);
     }

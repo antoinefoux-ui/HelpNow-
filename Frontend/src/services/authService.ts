@@ -3,7 +3,72 @@ import { User } from '../types';
 
 const API_URL = process.env.API_URL || 'https://api.helpnow.com/v1';
 
+interface AuthResponse {
+  user: User;
+  accessToken: string;
+  refreshToken?: string;
+}
+
 class AuthService {
+  // ---------- AUTH FLOW ----------
+
+  // Login
+  async signIn(email: string, password: string): Promise<AuthResponse> {
+    try {
+      const response = await axios.post(`${API_URL}/auth/login`, {
+        email,
+        password,
+      });
+      // Expecting { success, data: { user, accessToken, refreshToken } }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error signing in:', error);
+      throw error;
+    }
+  }
+
+  // Register
+  async signUp(
+    email: string,
+    password: string,
+    userData: Partial<User>
+  ): Promise<AuthResponse> {
+    try {
+      const response = await axios.post(`${API_URL}/auth/register`, {
+        email,
+        password,
+        ...userData,
+      });
+      // Expecting same shape as signIn
+      return response.data.data;
+    } catch (error) {
+      console.error('Error signing up:', error);
+      throw error;
+    }
+  }
+
+  // Optional backend logout
+  async signOut(): Promise<void> {
+    try {
+      await axios.post(`${API_URL}/auth/logout`);
+    } catch (error) {
+      // Not critical if backend logout fails
+      console.error('Error during sign out (backend):', error);
+    }
+  }
+
+  // Forgot password
+  async resetPassword(email: string): Promise<void> {
+    try {
+      await axios.post(`${API_URL}/auth/forgot-password`, { email });
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      throw error;
+    }
+  }
+
+  // ---------- USER PROFILE ----------
+
   async getUserData(userId: string): Promise<User> {
     try {
       const response = await axios.get(`${API_URL}/users/${userId}`);
