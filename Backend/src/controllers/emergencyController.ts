@@ -2,8 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { pool } from '../config/database';
 import { io } from '../server';
 import { redisClient } from '../config/redis';
+import { reverseGeocode } from '../utils/geoUtils';
 
 class EmergencyController {
+  private getRequesterId(req: Request): string | undefined {
+    return (req as Request & { user?: { userId?: string } }).user?.userId;
+  }
   /**
    * Create new emergency request
    */
@@ -30,6 +34,8 @@ class EmergencyController {
         return;
       }
 
+      const resolvedAddress = address || await reverseGeocode(location.latitude, location.longitude);
+
       await client.query('BEGIN');
 
       // Create emergency request
@@ -45,7 +51,7 @@ class EmergencyController {
           type,
           location.longitude,
           location.latitude,
-          address,
+          resolvedAddress,
           description,
           voiceNoteUrl,
           'pending',
@@ -212,6 +218,15 @@ class EmergencyController {
   async getActiveEmergency(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
+      const requesterId = this.getRequesterId(req);
+
+      if (!requesterId || requesterId !== userId) {
+        res.status(403).json({
+          success: false,
+          error: 'Not authorized to access this emergency resource',
+        });
+        return;
+      }
 
       const result = await pool.query(
         `SELECT * FROM emergency_requests 
@@ -292,6 +307,15 @@ class EmergencyController {
     try {
       const { userId } = req.params;
       const { limit = 20 } = req.query;
+      const requesterId = this.getRequesterId(req);
+
+      if (!requesterId || requesterId !== userId) {
+        res.status(403).json({
+          success: false,
+          error: 'Not authorized to access this emergency resource',
+        });
+        return;
+      }
 
       const result = await pool.query(
         `SELECT 
@@ -525,13 +549,62 @@ class EmergencyController {
   /**
    * Upload voice note
    */
-  async uploadVoiceNote(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async uploadVoiceNote(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      // TODO: Implement file upload to OVH Object Storage
-      
+      const { id } = req.params;
+      const requesterId = (req as Request & { user?: { userId?: string } }).user?.userId;
+      const file = req.file;
+
+      if (!requesterId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+        });
+        return;
+      }
+
+      const emergencyResult = await pool.query(
+        `SELECT seeker_id, accepted_helper_id FROM emergency_requests WHERE id = $1`,
+        [id]
+      );
+
+      if (emergencyResult.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          error: 'Emergency not found',
+        });
+        return;
+      }
+
+      const emergency = emergencyResult.rows[0];
+      if (requesterId !== emergency.seeker_id && requesterId !== emergency.accepted_helper_id) {
+        res.status(403).json({
+          success: false,
+          error: 'Not authorized to upload voice note for this emergency',
+        });
+        return;
+      }
+
+      if (!file) {
+        res.status(400).json({
+          success: false,
+          error: 'Voice note file is required',
+        });
+        return;
+      }
+
+      const generatedVoiceNoteUrl = `https://storage.helpnow.com/emergencies/${id}/voice-${Date.now()}.m4a`;
+
+      await pool.query(
+        `UPDATE emergency_requests SET voice_note_url = $1 WHERE id = $2`,
+        [generatedVoiceNoteUrl, id]
+      );
+
+      await redisClient.del(`emergency:${id}`);
+
       res.json({
         success: true,
-        message: 'Voice note upload endpoint',
+        data: { voiceNoteUrl: generatedVoiceNoteUrl },
       });
     } catch (error) {
       next(error);

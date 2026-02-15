@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 /**
  * Calculate distance between two coordinates using Haversine formula
  * @param lat1 Latitude of first point
@@ -140,23 +142,66 @@ export const getCardinalDirection = (bearing: number): string => {
 };
 
 /**
- * Geocoding utilities (placeholder - would use Google Maps API in production)
+ * Geocoding utilities
  */
 export const reverseGeocode = async (
   latitude: number,
   longitude: number
 ): Promise<string> => {
-  // TODO: Implement with Google Maps Geocoding API
-  // For now, return placeholder
-  return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+  const fallback = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey) {
+    return fallback;
+  }
+
+  try {
+    const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+      params: {
+        latlng: `${latitude},${longitude}`,
+        key: apiKey,
+      },
+      timeout: 5000,
+    });
+
+    const formatted = response.data?.results?.[0]?.formatted_address;
+    return formatted || fallback;
+  } catch (_error) {
+    return fallback;
+  }
 };
 
 /**
  * Forward geocoding (address to coordinates)
  */
 export const geocodeAddress = async (
-  _address: string
+  address: string
 ): Promise<{ latitude: number; longitude: number } | null> => {
-  // TODO: Implement with Google Maps Geocoding API
-  return null;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey || !address.trim()) {
+    return null;
+  }
+
+  try {
+    const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+      params: {
+        address,
+        key: apiKey,
+      },
+      timeout: 5000,
+    });
+
+    const location = response.data?.results?.[0]?.geometry?.location;
+    if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
+      return null;
+    }
+
+    return {
+      latitude: location.lat,
+      longitude: location.lng,
+    };
+  } catch (_error) {
+    return null;
+  }
 };
