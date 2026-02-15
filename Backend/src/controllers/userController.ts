@@ -2,13 +2,44 @@ import { Request, Response, NextFunction } from 'express';
 import { pool } from '../config/database';
 import { redisClient } from '../config/redis';
 
+type RequestWithUser = Request & { user?: { userId?: string } };
+
 class UserController {
+  private getRequesterId(req: Request): string | undefined {
+    return (req as RequestWithUser).user?.userId;
+  }
+
+  private ensureOwner(req: Request, res: Response): string | null {
+    const requesterId = this.getRequesterId(req);
+    const { id } = req.params;
+
+    if (!requesterId) {
+      res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+      });
+      return null;
+    }
+
+    if (requesterId !== id) {
+      res.status(403).json({
+        success: false,
+        error: 'Not authorized to access this user resource',
+      });
+      return null;
+    }
+
+    return requesterId;
+  }
   /**
    * Get user by ID
    */
   async getUserById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
+      if (!this.ensureOwner(req, res)) {
+        return;
+      }
 
       // Try cache first
       const cached = await redisClient.get(`user:${id}`);
@@ -98,6 +129,10 @@ class UserController {
 
     try {
       const { id } = req.params;
+      if (!this.ensureOwner(req, res)) {
+        return;
+      }
+
       const {
         firstName,
         lastName,
@@ -180,6 +215,9 @@ class UserController {
 
     try {
       const { id } = req.params;
+      if (!this.ensureOwner(req, res)) {
+        return;
+      }
 
       await client.query('BEGIN');
 
@@ -213,11 +251,21 @@ class UserController {
   async uploadPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      
-      // TODO: Implement file upload to OVH Object Storage
-      // For now, return placeholder
-      
-      const photoUrl = `https://storage.helpnow.com/users/${id}/profile.jpg`;
+      if (!this.ensureOwner(req, res)) {
+        return;
+      }
+
+      const file = req.file;
+
+      if (!file) {
+        res.status(400).json({
+          success: false,
+          error: 'Profile photo file is required',
+        });
+        return;
+      }
+
+      const photoUrl = `https://storage.helpnow.com/users/${id}/profile-${Date.now()}.jpg`;
 
       await pool.query(
         `UPDATE users SET profile_photo = $1, updated_at = NOW() WHERE id = $2`,
@@ -243,6 +291,10 @@ class UserController {
 
     try {
       const { id } = req.params;
+      if (!this.ensureOwner(req, res)) {
+        return;
+      }
+
       const {
         label,
         street,
@@ -305,6 +357,10 @@ class UserController {
   async updateAddress(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id, addressId } = req.params;
+      if (!this.ensureOwner(req, res)) {
+        return;
+      }
+
       const updates = req.body;
 
       // Build update query
@@ -352,6 +408,9 @@ class UserController {
   async deleteAddress(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id, addressId } = req.params;
+      if (!this.ensureOwner(req, res)) {
+        return;
+      }
 
       await pool.query(
         `DELETE FROM addresses WHERE id = $1 AND user_id = $2`,
@@ -375,6 +434,10 @@ class UserController {
   async addEmergencyContact(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
+      if (!this.ensureOwner(req, res)) {
+        return;
+      }
+
       const { name, phone, relationship } = req.body;
 
       const result = await pool.query(
@@ -401,6 +464,9 @@ class UserController {
   async deleteEmergencyContact(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id, contactId } = req.params;
+      if (!this.ensureOwner(req, res)) {
+        return;
+      }
 
       await pool.query(
         `DELETE FROM emergency_contacts WHERE id = $1 AND user_id = $2`,

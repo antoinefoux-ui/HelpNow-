@@ -23,7 +23,7 @@ LogBox.ignoreLogs([
 
 // Configure push notifications
 PushNotification.configure({
-  onNotification: function (notification) {
+  onNotification: function (notification: unknown) {
     console.log('NOTIFICATION:', notification);
   },
   permissions: {
