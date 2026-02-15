@@ -17,6 +17,35 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const buildFallbackUser = (
+  firebaseUser: { uid: string; email?: string | null; displayName?: string | null },
+  overrides: Partial<User> = {}
+): User => {
+  const [firstNameFromDisplay = '', lastNameFromDisplay = ''] = (firebaseUser.displayName || '').split(' ');
+
+  return {
+    id: firebaseUser.uid,
+    email: firebaseUser.email || overrides.email || '',
+    phone: overrides.phone || '',
+    firstName: overrides.firstName || firstNameFromDisplay || 'User',
+    lastName: overrides.lastName || lastNameFromDisplay || '',
+    profilePhoto: overrides.profilePhoto,
+    dateOfBirth: overrides.dateOfBirth || '',
+    gender: overrides.gender || 'prefer_not_to_say',
+    createdAt: overrides.createdAt || new Date(),
+    isHelper: overrides.isHelper || false,
+    isActive: overrides.isActive ?? true,
+    language: overrides.language || 'en',
+    emergencyContacts: overrides.emergencyContacts || [],
+    addresses: overrides.addresses || [],
+    medicalInfo: overrides.medicalInfo,
+    helperProfile: overrides.helperProfile,
+    rating: overrides.rating || 0,
+    totalHelps: overrides.totalHelps || 0,
+    verified: overrides.verified || false,
+  };
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,8 +58,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const userData = await authService.getUserData(firebaseUser.uid);
           setUser(userData);
         } catch (error) {
-          console.error('Error fetching user data:', error);
-          setUser(null);
+          console.error('Error fetching user data, using local fallback user:', error);
+          setUser(buildFallbackUser(firebaseUser));
         }
       } else {
         setUser(null);
@@ -45,8 +74,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setLoading(true);
       const userCredential = await auth().signInWithEmailAndPassword(email, password);
-      const userData = await authService.getUserData(userCredential.user.uid);
-      setUser(userData);
+      try {
+        const userData = await authService.getUserData(userCredential.user.uid);
+        setUser(userData);
+      } catch (backendError) {
+        console.warn('Backend user fetch failed on sign in, using fallback user:', backendError);
+        setUser(buildFallbackUser(userCredential.user));
+      }
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw error;
@@ -60,13 +94,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(true);
       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       
-      // Create user profile in backend
-      const newUser = await authService.createUserProfile(userCredential.user.uid, {
-        email,
-        ...userData,
-      });
-      
-      setUser(newUser);
+      // Create user profile in backend (best-effort)
+      try {
+        const newUser = await authService.createUserProfile(userCredential.user.uid, {
+          email,
+          ...userData,
+        });
+
+        setUser(newUser);
+      } catch (backendError) {
+        console.warn('Backend profile creation failed during sign up, using fallback user:', backendError);
+        setUser(buildFallbackUser(userCredential.user, {
+          email,
+          ...userData,
+        }));
+      }
     } catch (error: any) {
       console.error('Sign up error:', error);
       throw error;
@@ -102,8 +144,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       if (!user) throw new Error('No user logged in');
       
-      const updatedUser = await authService.updateUserProfile(user.id, userData);
-      setUser(updatedUser);
+      try {
+        const updatedUser = await authService.updateUserProfile(user.id, userData);
+        setUser(updatedUser);
+      } catch (backendError) {
+        console.warn('Backend profile update failed, applying local update fallback:', backendError);
+        setUser({ ...user, ...userData });
+      }
     } catch (error) {
       console.error('Update user error:', error);
       throw error;
@@ -113,8 +160,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const refreshUser = async () => {
     try {
       if (!user) return;
-      const userData = await authService.getUserData(user.id);
-      setUser(userData);
+      try {
+        const userData = await authService.getUserData(user.id);
+        setUser(userData);
+      } catch (backendError) {
+        console.warn('Refresh user fallback: backend unavailable', backendError);
+      }
     } catch (error) {
       console.error('Refresh user error:', error);
     }

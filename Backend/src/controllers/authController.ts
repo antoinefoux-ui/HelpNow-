@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/database';
 import { redisClient } from '../config/redis';
+import { emailService } from '../services/emailService';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
@@ -330,10 +331,11 @@ class AuthController {
         resetToken
       );
 
-      // TODO: Send email with reset link
-      // await sendPasswordResetEmail(user.email, resetToken);
+      const emailSent = await emailService.sendPasswordResetEmail(user.email, resetToken);
 
-      console.log(`Password reset token for ${user.email}: ${resetToken}`);
+      if (!emailSent) {
+        console.warn(`Password reset email could not be sent to ${user.email}`);
+      }
 
       res.json({
         success: true,
