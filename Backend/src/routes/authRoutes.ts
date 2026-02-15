@@ -1,6 +1,11 @@
 import express, { Router } from 'express';
 import { authController } from '../controllers/authController';
 import { authenticateToken } from '../middleware/auth';
+import {
+  validate,
+  loginSchema,
+  registerSchema,
+} from '../middleware/validation';
 
 const router: Router = express.Router();
 
@@ -9,14 +14,14 @@ const router: Router = express.Router();
  * @desc    Register new user
  * @access  Public
  */
-router.post('/register', authController.register);
+router.post('/register', validate(registerSchema), authController.register);
 
 /**
  * @route   POST /api/v1/auth/login
  * @desc    Login user
  * @access  Public
  */
-router.post('/login', authController.login);
+router.post('/login', validate(loginSchema), authController.login);
 
 /**
  * @route   POST /api/v1/auth/refresh

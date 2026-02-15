@@ -57,14 +57,14 @@ export const RootNavigator: React.FC = () => {
             name="ActiveEmergency" 
             component={ActiveEmergencyScreen}
             options={{
-              presentation: 'fullScreenModal',
+              presentation: 'modal',
             }}
           />
           <Stack.Screen 
             name="HelperResponse" 
             component={HelperResponseScreen}
             options={{
-              presentation: 'fullScreenModal',
+              presentation: 'modal',
             }}
           />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />

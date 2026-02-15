@@ -1,11 +1,30 @@
 import express, { Router } from 'express';
+import multer from 'multer';
 import { userController } from '../controllers/userController';
 import { authenticateToken } from '../middleware/auth';
+import {
+  validate,
+  updateUserSchema,
+  addressSchema,
+  emergencyContactSchema,
+} from '../middleware/validation';
 
 const router: Router = express.Router();
 
 // All routes require authentication
 router.use(authenticateToken);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      cb(new Error('Only image files are allowed'));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 /**
  * @route   GET /api/v1/users/:id
@@ -19,7 +38,7 @@ router.get('/:id', userController.getUserById);
  * @desc    Update user profile
  * @access  Private
  */
-router.put('/:id', userController.updateUser);
+router.put('/:id', validate(updateUserSchema), userController.updateUser);
 
 /**
  * @route   DELETE /api/v1/users/:id
@@ -33,14 +52,14 @@ router.delete('/:id', userController.deleteUser);
  * @desc    Upload profile photo
  * @access  Private
  */
-router.post('/:id/photo', userController.uploadPhoto);
+router.post('/:id/photo', upload.single('photo'), userController.uploadPhoto);
 
 /**
  * @route   POST /api/v1/users/:id/addresses
  * @desc    Add new address
  * @access  Private
  */
-router.post('/:id/addresses', userController.addAddress);
+router.post('/:id/addresses', validate(addressSchema), userController.addAddress);
 
 /**
  * @route   PUT /api/v1/users/:id/addresses/:addressId
@@ -61,7 +80,7 @@ router.delete('/:id/addresses/:addressId', userController.deleteAddress);
  * @desc    Add emergency contact
  * @access  Private
  */
-router.post('/:id/emergency-contacts', userController.addEmergencyContact);
+router.post('/:id/emergency-contacts', validate(emergencyContactSchema), userController.addEmergencyContact);
 
 /**
  * @route   DELETE /api/v1/users/:id/emergency-contacts/:contactId
