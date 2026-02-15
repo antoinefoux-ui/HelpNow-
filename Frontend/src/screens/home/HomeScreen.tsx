@@ -13,7 +13,6 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Geolocation from 'react-native-geolocation-service';
-import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -40,31 +39,12 @@ const HomeScreen: React.FC = () => {
     if (activeRequest) {
       navigation.navigate('ActiveEmergency', { requestId: activeRequest.id });
     }
-  }, [activeRequest]);
+  }, [activeRequest, navigation]);
 
   const requestLocationPermission = async () => {
     try {
-      const permission = Platform.select({
-        ios: PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
-        android: PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
-      });
-
-      if (!permission) return;
-
-      const result = await request(permission);
-
-      if (result === RESULTS.GRANTED) {
-        getCurrentLocation();
-      } else {
-        Alert.alert(
-          t('errors.locationPermission'),
-          'Please enable location services in settings',
-          [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: 'Settings', onPress: () => Linking.openSettings() },
-          ]
-        );
-      }
+      // Simplified: rely on Geolocation to trigger permission dialog
+      getCurrentLocation();
     } catch (error) {
       console.error('Error requesting location permission:', error);
     }
@@ -80,7 +60,7 @@ const HomeScreen: React.FC = () => {
         };
         setCurrentLocation(location);
         reverseGeocode(location);
-        // TODO: Fetch nearby helpers count
+        // TODO: Fetch nearby helpers count from backend
         setNearbyHelpersCount(Math.floor(Math.random() * 20) + 5);
       },
       (error) => {
@@ -105,9 +85,7 @@ const HomeScreen: React.FC = () => {
       Alert.alert(
         t('common.error'),
         t('errors.locationUnavailable'),
-        [
-          { text: t('common.ok'), onPress: getCurrentLocation },
-        ]
+        [{ text: t('common.ok'), onPress: getCurrentLocation }]
       );
       return;
     }
@@ -116,10 +94,11 @@ const HomeScreen: React.FC = () => {
   };
 
   const callEmergencyServices = () => {
-    const emergencyNumber = Platform.select({
-      ios: '112',
-      android: '112',
-    }) || '112';
+    const emergencyNumber =
+      Platform.select({
+        ios: '112',
+        android: '112',
+      }) || '112';
 
     Alert.alert(
       'Call Emergency Services',
@@ -168,7 +147,9 @@ const HomeScreen: React.FC = () => {
           <Icon name="map-marker" size={24} color="#E53E3E" />
           <Text style={styles.locationTitle}>{t('home.yourLocation')}</Text>
         </View>
-        <Text style={styles.locationAddress}>{address || 'Getting location...'}</Text>
+        <Text style={styles.locationAddress}>
+          {address || 'Getting location...'}
+        </Text>
         <TouchableOpacity onPress={getCurrentLocation}>
           <Text style={styles.refreshLocation}>Refresh Location</Text>
         </TouchableOpacity>

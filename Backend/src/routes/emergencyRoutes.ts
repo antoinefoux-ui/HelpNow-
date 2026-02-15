@@ -9,18 +9,9 @@ const router: Router = express.Router();
 // All routes require authentication
 router.use(authenticateToken);
 
-const createEmergencyValidation = validate(emergencyRequestSchema);
-
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('audio/')) {
-      cb(new Error('Only audio files are allowed'));
-      return;
-    }
-    cb(null, true);
-  },
 });
 
 /**
@@ -28,7 +19,7 @@ const upload = multer({
  * @desc    Create new emergency request
  * @access  Private
  */
-router.post('/', createEmergencyValidation, emergencyController.createEmergency);
+router.post('/', emergencyController.createEmergency);
 
 /**
  * @route   GET /api/v1/emergencies/active/:userId
@@ -92,12 +83,5 @@ router.post('/:id/resolve', emergencyController.resolveEmergency);
  * @access  Private
  */
 router.post('/:id/voice-note', upload.single('audio'), emergencyController.uploadVoiceNote);
-
-/**
- * @route   GET /api/v1/emergencies/:id
- * @desc    Get emergency by ID
- * @access  Private
- */
-router.get('/:id', emergencyController.getEmergency);
 
 export default router;
