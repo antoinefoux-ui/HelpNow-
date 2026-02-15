@@ -90,7 +90,7 @@ const ActivityScreen: React.FC = () => {
     return (
       <TouchableOpacity style={styles.card}>
         <View style={styles.cardHeader}>
-          <View style={[styles.typebadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+          <View style={[styles.typeBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
             <Icon 
               name={item.type === 'heart_attack' ? 'heart-pulse' : 'alert'} 
               size={20} 
