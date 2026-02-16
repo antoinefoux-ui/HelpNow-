@@ -8,6 +8,7 @@ import {
   Alert,
   Linking,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -30,6 +31,7 @@ const HomeScreen: React.FC = () => {
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [address, setAddress] = useState<string>('');
   const [nearbyHelpersCount, setNearbyHelpersCount] = useState<number>(0);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
 
   useEffect(() => {
     requestLocationPermission();
@@ -43,14 +45,61 @@ const HomeScreen: React.FC = () => {
 
   const requestLocationPermission = async () => {
     try {
-      // Simplified: rely on Geolocation to trigger permission dialog
-      getCurrentLocation();
+      if (Platform.OS === 'ios') {
+        // iOS: Request permission
+        const result = await Geolocation.requestAuthorization('whenInUse');
+        if (result === 'granted') {
+          setLocationPermissionGranted(true);
+          getCurrentLocation();
+        } else {
+          Alert.alert(
+            'Permission Required',
+            'Location permission is required to use this app. Please enable it in settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]
+          );
+        }
+      } else {
+        // Android: Request permission
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'HelpNow needs access to your location to connect you with nearby helpers.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          setLocationPermissionGranted(true);
+          getCurrentLocation();
+        } else {
+          Alert.alert(
+            'Permission Required',
+            'Location permission is required to use this app. Please enable it in settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]
+          );
+        }
+      }
     } catch (error) {
       console.error('Error requesting location permission:', error);
+      Alert.alert('Error', 'Failed to request location permission');
     }
   };
 
   const getCurrentLocation = () => {
+    if (!locationPermissionGranted && Platform.OS === 'android') {
+      requestLocationPermission();
+      return;
+    }
+
     Geolocation.getCurrentPosition(
       (position) => {
         const location: Location = {
@@ -65,7 +114,14 @@ const HomeScreen: React.FC = () => {
       },
       (error) => {
         console.error('Error getting location:', error);
-        Alert.alert(t('common.error'), t('errors.locationUnavailable'));
+        Alert.alert(
+          t('common.error'),
+          'Unable to get your location. Please check your location settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => getCurrentLocation() },
+          ]
+        );
       },
       {
         enableHighAccuracy: true,
@@ -76,8 +132,8 @@ const HomeScreen: React.FC = () => {
   };
 
   const reverseGeocode = async (location: Location) => {
-    // TODO: Implement reverse geocoding
-    setAddress('Current Location');
+    // TODO: Implement reverse geocoding with Google Maps API or similar
+    setAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
   };
 
   const handleRequestHelp = () => {
