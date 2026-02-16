@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { User } from '../types';
 
-const API_URL = 'https://helpnow-production.up.railway.app/api/v1';
+import { API_CONFIG } from '../config/api';
+const API_URL = API_CONFIG.BASE_URL;
 
 interface AuthResponse {
   user: User;
