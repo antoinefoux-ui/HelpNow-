@@ -1,7 +1,8 @@
 import io, { Socket } from 'socket.io-client';
 import { SocketEvent, SocketEventData } from '../types';
+import { API_CONFIG } from '../config/api';
 
-const SOCKET_URL = process.env.SOCKET_URL || 'https://api.helpnow.com';
+const SOCKET_URL = API_CONFIG.SOCKET_URL;
 
 class SocketService {
   private socket: Socket | null = null;
