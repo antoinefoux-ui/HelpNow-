@@ -69,6 +69,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signIn = async (email: string, password: string) => {
     try {
+
+      if (!loggedInUser) {
+         console.warn('No user returned from signIn');
+         return;
+       }
+      
       setLoading(true);
 
       // TODO: adapt this to your backend authService implementation
@@ -90,6 +96,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signUp = async (email: string, password: string, userData: Partial<User>) => {
     try {
+
+      if (!loggedInUser) {
+        console.warn('No user returned from signIn');
+        return;
+      }
+      
       setLoading(true);
 
       // TODO: adapt this to your backend authService implementation
@@ -110,6 +122,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = async () => {
     try {
+
+      if (!loggedInUser) {
+          console.warn('No user returned from signIn');
+          return;
+      }
+
       setLoading(true);
 
       // Optional: inform backend about logout / token revoke
@@ -146,7 +164,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateUser = async (userData: Partial<User>) => {
     try {
-      if (!user) throw new Error('No user logged in');
+      if (!user) {
+         console.warn('updateUser called without logged user');
+         return;
+      }
 
       const updatedUser = await authService.updateUserProfile(user.id, userData);
       setUser(updatedUser);
