@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { EmergencyRequest, EmergencyType, Location } from '../types';
 
-const API_URL = process.env.API_URL || 'https://api.helpnow.com/v1';
+import { API_CONFIG } from '../config/api';
+const API_URL = API_CONFIG.BASE_URL;
 
 interface CreateRequestData {
   seekerId: string;
