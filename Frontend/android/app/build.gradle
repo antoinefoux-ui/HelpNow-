@@ -179,4 +179,9 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-}
+    // Fix duplicate class error from react-native-push-notification
+       configurations.all {
+           exclude group: 'com.android.support', module: 'support-compat'
+           exclude group: 'com.android.support', module: 'support-v4'
+       }
+   }  
