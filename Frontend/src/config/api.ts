@@ -1,7 +1,9 @@
 // src/config/api.ts
+// Centralized API configuration for the HelpNow app
 
 export const API_CONFIG = {
   BASE_URL: 'https://helpnow-production.up.railway.app/api/v1',
+  SOCKET_URL: 'https://helpnow-production.up.railway.app',
   TIMEOUT: 10000, // 10 seconds
   GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || '',
 };
@@ -41,4 +43,42 @@ export const API_ENDPOINTS = {
     RESOLVE: (requestId: string) => `/emergencies/${requestId}/resolve`,
     VOICE_NOTE: (requestId: string) => `/emergencies/${requestId}/voice-note`,
   },
+  
+  // Helpers
+  HELPERS: {
+    LIST: '/helpers',
+    GET: (helperId: string) => `/helpers/${helperId}`,
+    UPDATE_AVAILABILITY: (helperId: string) => `/helpers/${helperId}/availability`,
+    UPDATE_LOCATION: (helperId: string) => `/helpers/${helperId}/location`,
+    STATS: (helperId: string) => `/helpers/${helperId}/stats`,
+  },
 };
+
+// Socket Events
+export const SOCKET_EVENTS = {
+  // Connection
+  CONNECT: 'connect',
+  DISCONNECT: 'disconnect',
+  ERROR: 'error',
+  
+  // Emergency events
+  EMERGENCY_CREATED: 'emergency:created',
+  EMERGENCY_ACCEPTED: 'emergency:accepted',
+  EMERGENCY_CANCELLED: 'emergency:cancelled',
+  EMERGENCY_RESOLVED: 'emergency:resolved',
+  
+  // Helper events
+  HELPER_LOCATION_UPDATE: 'helper:location_update',
+  HELPER_ARRIVED: 'helper:arrived',
+  HELPER_AVAILABILITY: 'helper:set_availability',
+  
+  // Room events
+  JOIN_EMERGENCY: 'join:emergency',
+  LEAVE_EMERGENCY: 'leave:emergency',
+  
+  // Message events
+  MESSAGE_SEND: 'message:send',
+  MESSAGE_RECEIVED: 'message:received',
+};
+
+export default API_CONFIG;
