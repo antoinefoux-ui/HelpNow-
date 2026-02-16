@@ -57,6 +57,23 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Root endpoint
+app.get('/', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'HelpNow API is running',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      auth: '/api/v1/auth',
+      users: '/api/v1/users',
+      emergencies: '/api/v1/emergencies',
+      helpers: '/api/v1/helpers',
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
