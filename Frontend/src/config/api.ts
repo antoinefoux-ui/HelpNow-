@@ -2,10 +2,9 @@
 // Centralized API configuration for the HelpNow app
 
 export const API_CONFIG = {
-  BASE_URL: 'http://192.168.8.191:3000/api/v1', // Use your Mac's IP
-  SOCKET_URL: 'http://192.168.8.191:3000',
-  TIMEOUT: 10000, // 10 seconds
-  GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || "",
+  BASE_URL: 'http://10.0.2.2:3000/api/v1',  // ✅ Works in Android emulator
+  SOCKET_URL: 'http://10.0.2.2:3000',
+  // ...
 };
 
 
