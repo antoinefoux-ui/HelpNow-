@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { User } from '../types';
 
-const API_URL = process.env.API_URL || 'https://api.helpnow.com/v1';
+const API_URL = 'https://helpnow-production.up.railway.app/api/v1';
 
 interface AuthResponse {
   user: User;
