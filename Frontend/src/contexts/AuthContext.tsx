@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Expecting authService.signIn to return { user, accessToken, refreshToken? }
       const { user: loggedInUser, accessToken } = await authService.signIn(email, password);
 
-      setUser(loggedInUser);
+      if(loggedInUser) setUser(loggedInUser);
       await AsyncStorage.setItem('user', JSON.stringify(loggedInUser));
       if (accessToken) {
         await AsyncStorage.setItem('accessToken', accessToken);
@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // TODO: adapt this to your backend authService implementation
       const { user: newUser, accessToken } = await authService.signUp(email, password, userData);
 
-      setUser(newUser);
+      if(newUser) setUser(newUser);
       await AsyncStorage.setItem('user', JSON.stringify(newUser));
       if (accessToken) {
         await AsyncStorage.setItem('accessToken', accessToken);
