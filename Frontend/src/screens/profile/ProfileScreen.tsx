@@ -234,7 +234,11 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.statBox}>
             <View style={styles.ratingContainer}>
               <Icon name="star" size={20} color="#F59E0B" />
-              <Text style={styles.statValue}>{user.rating?.toFixed(1) || '0.0'}</Text>
+              <Text style={styles.statValue}>
+                {user.rating && !isNaN(Number(user.rating)) 
+                  ? Number(user.rating).toFixed(1) 
+                  : '0.0'}
+              </Text>
             </View>
             <Text style={styles.statLabel}>Rating</Text>
           </View>
