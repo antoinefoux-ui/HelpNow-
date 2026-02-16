@@ -2,20 +2,18 @@
 // Centralized API configuration for the HelpNow app
 
 export const API_CONFIG = {
-  BASE_URL: 'http://10.0.2.2:3000/api/v1',  // ✅ Works in Android emulator
-  SOCKET_URL: 'http://10.0.2.2:3000',
-  // ...
+  BASE_URL: 'http://10.0.2.2:3000/api/v1',  // Changed from localhost
+  SOCKET_URL: 'http://10.0.2.2:3000',       // Changed from localhost
+  TIMEOUT: 10000, // 10 seconds
+  GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || "",
 };
 
-
 export const API_ENDPOINTS = {
-  // Auth
-  AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    FORGOT_PASSWORD: '/auth/forgot-password',
-  },
+  // Auth endpoints
+  REGISTER: '/auth/register',
+  LOGIN: '/auth/login',
+  // ... rest stays the same
+};
   
   // Users
   USERS: {
