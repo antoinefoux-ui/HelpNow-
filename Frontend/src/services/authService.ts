@@ -1,3 +1,4 @@
+import '../config/axios'; // Import axios interceptor config FIRST
 import axios from 'axios';
 import { User } from '../types';
 
