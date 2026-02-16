@@ -9,10 +9,16 @@ export const API_CONFIG = {
 };
 
 export const API_ENDPOINTS = {
+  
+    // Auth
+  AUTH: {
+    LOGOUT: '/auth/logout',
+    FORGOT_PASSWORD: '/auth/forgot-password',
   // Auth endpoints
   REGISTER: '/auth/register',
   LOGIN: '/auth/login',
-  // ... rest stays the same
+},
+
 };
   
   // Users
