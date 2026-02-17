@@ -2,8 +2,8 @@
 // Centralized API configuration for the HelpNow app
 
 export const API_CONFIG = {
-  BASE_URL: 'http://10.0.2.2:3000/api/v1',
-  SOCKET_URL: 'http://10.0.2.2:3000',
+  BASE_URL: 'http://10.0.2.2:3001/api/v1',  // ← 3001 not 3000
+  SOCKET_URL: 'http://10.0.2.2:3001',        // ← 3001 not 3000
   TIMEOUT: 10000,
   GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || '',
 };
