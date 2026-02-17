@@ -169,8 +169,8 @@ const HomeScreen: React.FC = () => {
       'Call Emergency Services',
       'Call 112?',
       [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.yes'), onPress: () => Linking.openURL('tel:112') },
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Call', onPress: () => Linking.openURL('tel:112') },
       ]
     );
   };
