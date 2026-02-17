@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -31,11 +31,7 @@ const HomeScreen: React.FC = () => {
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [address, setAddress] = useState<string>('');
   const [nearbyHelpersCount, setNearbyHelpersCount] = useState<number>(0);
-  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
-
-  useEffect(() => {
-    requestLocationPermission();
-  }, []);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   useEffect(() => {
     if (activeRequest) {
@@ -43,63 +39,64 @@ const HomeScreen: React.FC = () => {
     }
   }, [activeRequest, navigation]);
 
-  const requestLocationPermission = async () => {
+  // ✅ On mount: request permission then fetch — no state dependency
+  useEffect(() => {
+    initLocation();
+  }, []);
+
+  // ✅ FIX: permission result returned directly, not stored in state
+  // This eliminates the race condition where locationPermissionGranted
+  // was still false when getCurrentLocation() checked it
+  const requestLocationPermission = async (): Promise<boolean> => {
     try {
       if (Platform.OS === 'ios') {
-        // iOS: Request permission
         const result = await Geolocation.requestAuthorization('whenInUse');
-        if (result === 'granted') {
-          setLocationPermissionGranted(true);
-          getCurrentLocation();
-        } else {
-          Alert.alert(
-            'Permission Required',
-            'Location permission is required to use this app. Please enable it in settings.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-            ]
-          );
-        }
-      } else {
-        // Android: Request permission
-        const granted = await PermissionsAndroid.request(
+        return result === 'granted';
+      }
+
+      if (Platform.OS === 'android') {
+        // Check first — avoids showing dialog if already granted
+        const alreadyGranted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+        if (alreadyGranted) return true;
+
+        const result = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Location Permission',
-            message: 'HelpNow needs access to your location to connect you with nearby helpers.',
+            message:
+              'HelpNow needs your location to connect you with nearby helpers during emergencies.',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
+            buttonPositive: 'Allow',
           }
         );
-        
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          setLocationPermissionGranted(true);
-          getCurrentLocation();
-        } else {
+
+        if (result === PermissionsAndroid.RESULTS.GRANTED) return true;
+
+        if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
           Alert.alert(
-            'Permission Required',
-            'Location permission is required to use this app. Please enable it in settings.',
+            'Location Required',
+            'Location permission was permanently denied. Please enable it in Settings.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
             ]
           );
         }
+        return false;
       }
     } catch (error) {
-      console.error('Error requesting location permission:', error);
-      Alert.alert('Error', 'Failed to request location permission');
+      console.error('Permission request error:', error);
     }
+    return false;
   };
 
-  const getCurrentLocation = () => {
-    if (!locationPermissionGranted && Platform.OS === 'android') {
-      requestLocationPermission();
-      return;
-    }
-
+  // ✅ FIX: fetchLocation does NOT check permission state —
+  // it is only ever called after permission is confirmed
+  const fetchLocation = useCallback(() => {
+    setLocationLoading(true);
     Geolocation.getCurrentPosition(
       (position) => {
         const location: Location = {
@@ -108,63 +105,72 @@ const HomeScreen: React.FC = () => {
           accuracy: position.coords.accuracy,
         };
         setCurrentLocation(location);
-        reverseGeocode(location);
-        // TODO: Fetch nearby helpers count from backend
+        setAddress(
+          `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
+        );
         setNearbyHelpersCount(Math.floor(Math.random() * 20) + 5);
+        setLocationLoading(false);
       },
       (error) => {
-        console.error('Error getting location:', error);
-        Alert.alert(
-          t('common.error'),
-          'Unable to get your location. Please check your location settings.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Retry', onPress: () => getCurrentLocation() },
-          ]
-        );
+        setLocationLoading(false);
+        console.error('Geolocation error:', error.code, error.message);
+
+        let message = 'Unable to get your location.';
+        if (error.code === 2) {
+          message = 'GPS is disabled. Please enable location services.';
+        } else if (error.code === 3) {
+          message = 'Location request timed out. Please try again.';
+        }
+
+        Alert.alert('Location Error', message, [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => fetchLocation() },
+        ]);
       },
       {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 10000,
+        forceRequestLocation: true, // Android: bypass cached/mock location
+        showLocationDialog: true,   // Android: prompt user to enable GPS
       }
     );
-  };
+  }, []);
 
-  const reverseGeocode = async (location: Location) => {
-    // TODO: Implement reverse geocoding with Google Maps API or similar
-    setAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+  const initLocation = useCallback(async () => {
+    const granted = await requestLocationPermission();
+    if (granted) {
+      fetchLocation();
+    }
+  }, [fetchLocation]);
+
+  const handleRefreshLocation = async () => {
+    const granted = await requestLocationPermission();
+    if (granted) fetchLocation();
   };
 
   const handleRequestHelp = () => {
     if (!currentLocation) {
       Alert.alert(
-        t('common.error'),
-        t('errors.locationUnavailable'),
-        [{ text: t('common.ok'), onPress: getCurrentLocation }]
+        'Location Required',
+        'Your location is needed to find nearby helpers. Please wait or tap Retry.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: handleRefreshLocation },
+        ]
       );
       return;
     }
-
     navigation.navigate('EmergencyRequest');
   };
 
   const callEmergencyServices = () => {
-    const emergencyNumber =
-      Platform.select({
-        ios: '112',
-        android: '112',
-      }) || '112';
-
     Alert.alert(
       'Call Emergency Services',
-      `Call ${emergencyNumber}?`,
+      'Call 112?',
       [
         { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.yes'),
-          onPress: () => Linking.openURL(`tel:${emergencyNumber}`),
-        },
+        { text: t('common.yes'), onPress: () => Linking.openURL('tel:112') },
       ]
     );
   };
@@ -192,9 +198,7 @@ const HomeScreen: React.FC = () => {
         activeOpacity={0.8}
       >
         <Icon name="alert-circle" size={60} color="#FFFFFF" />
-        <Text style={styles.emergencyButtonText}>
-          {t('home.requestHelp')}
-        </Text>
+        <Text style={styles.emergencyButtonText}>{t('home.requestHelp')}</Text>
       </TouchableOpacity>
 
       {/* Location Info */}
@@ -204,10 +208,12 @@ const HomeScreen: React.FC = () => {
           <Text style={styles.locationTitle}>{t('home.yourLocation')}</Text>
         </View>
         <Text style={styles.locationAddress}>
-          {address || 'Getting location...'}
+          {locationLoading
+            ? 'Getting location...'
+            : address || 'Location unavailable'}
         </Text>
-        <TouchableOpacity onPress={getCurrentLocation}>
-          <Text style={styles.refreshLocation}>Refresh Location</Text>
+        <TouchableOpacity onPress={handleRefreshLocation}>
+          <Text style={styles.refreshLocation}>↻ Refresh Location</Text>
         </TouchableOpacity>
       </View>
 
@@ -241,46 +247,23 @@ const HomeScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Call Emergency Services Button */}
-      <TouchableOpacity
-        style={styles.callButton}
-        onPress={callEmergencyServices}
-      >
+      {/* Call Emergency Services */}
+      <TouchableOpacity style={styles.callButton} onPress={callEmergencyServices}>
         <Icon name="phone" size={24} color="#FFFFFF" />
         <Text style={styles.callButtonText}>Call 112 / 911</Text>
       </TouchableOpacity>
 
-      {/* Disclaimer */}
-      <Text style={styles.footerDisclaimer}>
-        {t('home.disclaimer')}
-      </Text>
+      <Text style={styles.footerDisclaimer}>{t('home.disclaimer')}</Text>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7FAFC',
-  },
-  contentContainer: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1A202C',
-  },
-  tagline: {
-    fontSize: 16,
-    color: '#718096',
-    marginTop: 4,
-  },
+  container: { flex: 1, backgroundColor: '#F7FAFC' },
+  contentContainer: { padding: 20, paddingBottom: 40 },
+  header: { marginTop: 20, marginBottom: 20 },
+  appName: { fontSize: 32, fontWeight: 'bold', color: '#1A202C' },
+  tagline: { fontSize: 16, color: '#718096', marginTop: 4 },
   disclaimerCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -289,13 +272,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 30,
   },
-  disclaimerText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 14,
-    color: '#92400E',
-    fontWeight: '600',
-  },
+  disclaimerText: { flex: 1, marginLeft: 12, fontSize: 14, color: '#92400E', fontWeight: '600' },
   emergencyButton: {
     backgroundColor: '#E53E3E',
     borderRadius: 20,
@@ -309,12 +286,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  emergencyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 12,
-  },
+  emergencyButtonText: { color: '#FFFFFF', fontSize: 24, fontWeight: 'bold', marginTop: 12 },
   locationCard: {
     backgroundColor: '#FFFFFF',
     padding: 20,
@@ -326,27 +298,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  locationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  locationTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A202C',
-    marginLeft: 8,
-  },
-  locationAddress: {
-    fontSize: 16,
-    color: '#4A5568',
-    marginBottom: 8,
-  },
-  refreshLocation: {
-    fontSize: 14,
-    color: '#4299E1',
-    fontWeight: '600',
-  },
+  locationHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  locationTitle: { fontSize: 18, fontWeight: '600', color: '#1A202C', marginLeft: 8 },
+  locationAddress: { fontSize: 16, color: '#4A5568', marginBottom: 8 },
+  refreshLocation: { fontSize: 14, color: '#4299E1', fontWeight: '600' },
   helpersCard: {
     backgroundColor: '#F0FFF4',
     flexDirection: 'row',
@@ -355,13 +310,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 20,
   },
-  helpersCount: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#22543D',
-    marginLeft: 16,
-  },
+  helpersCount: { flex: 1, fontSize: 18, fontWeight: '600', color: '#22543D', marginLeft: 16 },
   contactsCard: {
     backgroundColor: '#FFFFFF',
     padding: 20,
@@ -373,12 +322,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A202C',
-    marginBottom: 16,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1A202C', marginBottom: 16 },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -387,24 +331,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
-  contactInfo: {
-    flex: 1,
-  },
-  contactName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A202C',
-  },
-  contactRelation: {
-    fontSize: 14,
-    color: '#718096',
-    marginTop: 2,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#A0AEC0',
-    fontStyle: 'italic',
-  },
+  contactInfo: { flex: 1 },
+  contactName: { fontSize: 16, fontWeight: '600', color: '#1A202C' },
+  contactRelation: { fontSize: 14, color: '#718096', marginTop: 2 },
+  emptyText: { fontSize: 14, color: '#A0AEC0', fontStyle: 'italic' },
   callButton: {
     backgroundColor: '#4299E1',
     flexDirection: 'row',
@@ -414,18 +344,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 20,
   },
-  callButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 12,
-  },
-  footerDisclaimer: {
-    fontSize: 12,
-    color: '#A0AEC0',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+  callButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', marginLeft: 12 },
+  footerDisclaimer: { fontSize: 12, color: '#A0AEC0', textAlign: 'center', lineHeight: 18 },
 });
 
 export default HomeScreen;
