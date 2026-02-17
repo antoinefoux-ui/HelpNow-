@@ -3,42 +3,38 @@
 
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_CONFIG } from './api';
+
+// Set base URL globally so all requests use the right server
+axios.defaults.baseURL = API_CONFIG.BASE_URL;
+axios.defaults.timeout = API_CONFIG.TIMEOUT;
+axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 // Request interceptor - adds token to all requests
 axios.interceptors.request.use(
   async (config) => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      
       return config;
     } catch (error) {
       console.error('Error getting token from storage:', error);
       return config;
     }
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle 401 errors (optional but recommended)
+// Response interceptor - handle 401 errors
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      console.log('Unauthorized - token may be invalid');
-      
-      // Optional: Clear storage and redirect to login
-      // await AsyncStorage.removeItem('accessToken');
-      // await AsyncStorage.removeItem('user');
-      // Navigate to login screen
+      console.log('Unauthorized - clearing tokens');
+      await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
     }
-    
     return Promise.reject(error);
   }
 );
