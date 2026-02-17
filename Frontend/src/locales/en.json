@@ -1,1 +1,122 @@
-{}
+{
+  "app": {
+    "name": "HelpNow",
+    "tagline": "Emergency help, when you need it most"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "retry": "Retry",
+    "close": "Close",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "submit": "Submit",
+    "search": "Search",
+    "settings": "Settings",
+    "profile": "Profile",
+    "logout": "Logout"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Network error. Please check your connection.",
+    "locationUnavailable": "Unable to get your location. Please check your location settings.",
+    "permissionDenied": "Permission denied.",
+    "unauthorized": "Please sign in to continue.",
+    "notFound": "Not found.",
+    "serverError": "Server error. Please try again later."
+  },
+  "home": {
+    "requestHelp": "Request Help",
+    "yourLocation": "Your Location",
+    "nearbyHelpers": "{{count}} helpers nearby",
+    "emergencyContacts": "Emergency Contacts",
+    "callEmergencyServices": "For life-threatening emergencies, always call 112 or 911 first.",
+    "disclaimer": "HelpNow connects you with trained volunteers. Always call official emergency services (112/911) for life-threatening situations.",
+    "noEmergencyContacts": "No emergency contacts added",
+    "refreshLocation": "↻ Refresh Location"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone Number",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "welcomeBack": "Welcome back",
+    "createAccount": "Create Account"
+  },
+  "emergency": {
+    "title": "Request Emergency Help",
+    "selectType": "What kind of help do you need?",
+    "description": "Describe your emergency (optional)",
+    "descriptionPlaceholder": "Add any details that may help...",
+    "submit": "Send Help Request",
+    "submitting": "Sending...",
+    "cancelRequest": "Cancel Request",
+    "confirmCancel": "Are you sure you want to cancel your help request?",
+    "helpOnTheWay": "Help is on the way!",
+    "helperArrived": "Your helper has arrived",
+    "resolved": "Emergency resolved",
+    "eta": "ETA: {{minutes}} min",
+    "types": {
+      "medical": "Medical",
+      "accident": "Accident",
+      "fire": "Fire",
+      "security": "Security",
+      "mental_health": "Mental Health",
+      "other": "Other"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "editProfile": "Edit Profile",
+    "personalInfo": "Personal Information",
+    "emergencyContacts": "Emergency Contacts",
+    "addContact": "Add Contact",
+    "helperProfile": "Helper Profile",
+    "becomeHelper": "Become a Helper",
+    "rating": "Rating",
+    "totalHelps": "Total Helps",
+    "verified": "Verified",
+    "memberSince": "Member since {{date}}"
+  },
+  "settings": {
+    "title": "Settings",
+    "notifications": "Notifications",
+    "language": "Language",
+    "privacy": "Privacy",
+    "terms": "Terms of Service",
+    "about": "About",
+    "version": "Version {{version}}",
+    "support": "Support",
+    "deleteAccount": "Delete Account",
+    "confirmDeleteAccount": "Are you sure you want to delete your account? This action cannot be undone."
+  },
+  "helper": {
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "newRequest": "New Help Request Nearby",
+    "accept": "Accept",
+    "decline": "Decline",
+    "arrived": "I've Arrived",
+    "resolve": "Mark as Resolved",
+    "distance": "{{distance}} away",
+    "responseTime": "Respond within {{seconds}}s"
+  }
+}
