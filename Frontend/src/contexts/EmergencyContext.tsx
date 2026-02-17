@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
 import { EmergencyRequest, EmergencyType, Location } from '../types';
 import { emergencyService } from '../services/emergencyService';
 import { useAuth } from './AuthContext';
@@ -18,44 +18,50 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [activeRequest, setActiveRequest] = useState<EmergencyRequest | null>(null);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      // Check for active emergency request on mount
-      checkActiveRequest();
-      
-      // Subscribe to socket events
-      socketService.on('emergency:accepted', handleEmergencyAccepted);
-      socketService.on('helper:location_update', handleHelperLocationUpdate);
-      socketService.on('helper:arrived', handleHelperArrived);
-      socketService.on('emergency:resolved', handleEmergencyResolved);
+  const checkActiveRequest = useCallback(async () => {
+    if (!user) return;
+    try {
+      const request = await emergencyService.getActiveRequest(user.id);
+      setActiveRequest(request);
+    } catch (error: any) {
+      // 401 = token not ready yet (race condition on login), silently ignore
+      // 404 = no active request, also fine
+      if (error?.response?.status !== 401 && error?.response?.status !== 404) {
+        console.error('Error checking active request:', error);
+      }
     }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Small delay to ensure token is saved to AsyncStorage before first request
+    const timer = setTimeout(() => {
+      checkActiveRequest();
+    }, 500);
+
+    socketService.on('emergency:accepted', handleEmergencyAccepted);
+    socketService.on('helper:location_update', handleHelperLocationUpdate);
+    socketService.on('helper:arrived', handleHelperArrived);
+    socketService.on('emergency:resolved', handleEmergencyResolved);
 
     return () => {
+      clearTimeout(timer);
       socketService.off('emergency:accepted');
       socketService.off('helper:location_update');
       socketService.off('helper:arrived');
       socketService.off('emergency:resolved');
     };
-  }, [user]);
-
-  const checkActiveRequest = async () => {
-    try {
-      if (!user) return;
-      const request = await emergencyService.getActiveRequest(user.id);
-      setActiveRequest(request);
-    } catch (error) {
-      console.error('Error checking active request:', error);
-    }
-  };
+  }, [user, checkActiveRequest]);
 
   const createEmergencyRequest = async (
     type: EmergencyType,
     location: Location,
     description?: string
   ) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
-      if (!user) throw new Error('User not authenticated');
-      
       const request = await emergencyService.createRequest({
         seekerId: user.id,
         seekerInfo: {
@@ -67,7 +73,6 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
         location,
         description,
       });
-
       setActiveRequest(request);
     } catch (error) {
       console.error('Error creating emergency request:', error);
@@ -100,8 +105,8 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const refreshActiveRequest = async () => {
+    if (!activeRequest) return;
     try {
-      if (!activeRequest) return;
       const updatedRequest = await emergencyService.getRequest(activeRequest.id);
       setActiveRequest(updatedRequest);
     } catch (error) {
@@ -118,13 +123,13 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const handleHelperLocationUpdate = (data: any) => {
     if (activeRequest && data.requestId === activeRequest.id) {
-      setActiveRequest(prev => 
-        prev ? { 
-          ...prev, 
+      setActiveRequest(prev =>
+        prev ? {
+          ...prev,
           acceptedHelperInfo: {
             ...prev.acceptedHelperInfo!,
             eta: data.eta,
-          }
+          },
         } : null
       );
     }
@@ -132,9 +137,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const handleHelperArrived = (data: any) => {
     if (activeRequest && data.requestId === activeRequest.id) {
-      setActiveRequest(prev => 
-        prev ? { ...prev, status: 'helper_arrived' } : null
-      );
+      setActiveRequest(prev => prev ? { ...prev, status: 'helper_arrived' } : null);
     }
   };
 
