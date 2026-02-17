@@ -1,9 +1,7 @@
-import '../config/axios'; // Import axios interceptor config FIRST
+import '../config/axios'; // MUST be first - sets up interceptors
 import axios from 'axios';
 import { User } from '../types';
-
-import { API_CONFIG } from '../config/api';
-const API_URL = API_CONFIG.BASE_URL;
+import { API_ENDPOINTS } from '../config/api';
 
 interface AuthResponse {
   user: User;
@@ -12,16 +10,9 @@ interface AuthResponse {
 }
 
 class AuthService {
-  // ---------- AUTH FLOW ----------
-
-  // Login
   async signIn(email: string, password: string): Promise<AuthResponse> {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password,
-      });
-      // Expecting { success, data: { user, accessToken, refreshToken } }
+      const response = await axios.post(API_ENDPOINTS.LOGIN, { email, password });
       return response.data.data;
     } catch (error) {
       console.error('Error signing in:', error);
@@ -29,19 +20,17 @@ class AuthService {
     }
   }
 
-  // Register
-  async signUp(
-    email: string,
-    password: string,
-    userData: Partial<User>
-  ): Promise<AuthResponse> {
+  async signUp(email: string, password: string, userData: Partial<User>): Promise<AuthResponse> {
     try {
-      const response = await axios.post(`${API_URL}/auth/register`, {
+      const response = await axios.post(API_ENDPOINTS.REGISTER, {
         email,
         password,
-        ...userData,
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        phone: userData.phone || '',
+        isHelper: userData.isHelper || false,
+        language: userData.language || 'en',
       });
-      // Expecting same shape as signIn
       return response.data.data;
     } catch (error) {
       console.error('Error signing up:', error);
@@ -49,31 +38,26 @@ class AuthService {
     }
   }
 
-  // Optional backend logout
   async signOut(): Promise<void> {
     try {
-      await axios.post(`${API_URL}/auth/logout`);
-    } catch (error) {
-      // Not critical if backend logout fails
-      console.error('Error during sign out (backend):', error);
+      await axios.post(API_ENDPOINTS.LOGOUT);
+    } catch {
+      console.log('Backend logout failed (non-critical)');
     }
   }
 
-  // Forgot password
   async resetPassword(email: string): Promise<void> {
     try {
-      await axios.post(`${API_URL}/auth/forgot-password`, { email });
+      await axios.post(API_ENDPOINTS.FORGOT_PASSWORD, { email });
     } catch (error) {
       console.error('Error resetting password:', error);
       throw error;
     }
   }
 
-  // ---------- USER PROFILE ----------
-
   async getUserData(userId: string): Promise<User> {
     try {
-      const response = await axios.get(`${API_URL}/users/${userId}`);
+      const response = await axios.get(API_ENDPOINTS.GET_USER(userId));
       return response.data.data;
     } catch (error) {
       console.error('Error getting user data:', error);
@@ -81,28 +65,9 @@ class AuthService {
     }
   }
 
-  async createUserProfile(userId: string, userData: Partial<User>): Promise<User> {
-    try {
-      const response = await axios.post(`${API_URL}/users`, {
-        id: userId,
-        ...userData,
-        createdAt: new Date(),
-        isHelper: false,
-        isActive: true,
-        rating: 0,
-        totalHelps: 0,
-        verified: false,
-      });
-      return response.data.data;
-    } catch (error) {
-      console.error('Error creating user profile:', error);
-      throw error;
-    }
-  }
-
   async updateUserProfile(userId: string, userData: Partial<User>): Promise<User> {
     try {
-      const response = await axios.put(`${API_URL}/users/${userId}`, userData);
+      const response = await axios.put(API_ENDPOINTS.UPDATE_USER(userId), userData);
       return response.data.data;
     } catch (error) {
       console.error('Error updating user profile:', error);
@@ -112,7 +77,7 @@ class AuthService {
 
   async deleteAccount(userId: string): Promise<void> {
     try {
-      await axios.delete(`${API_URL}/users/${userId}`);
+      await axios.delete(API_ENDPOINTS.DELETE_USER(userId));
     } catch (error) {
       console.error('Error deleting account:', error);
       throw error;
@@ -122,74 +87,13 @@ class AuthService {
   async uploadProfilePhoto(userId: string, photoUri: string): Promise<string> {
     try {
       const formData = new FormData();
-      formData.append('photo', {
-        uri: photoUri,
-        type: 'image/jpeg',
-        name: 'profile.jpg',
-      } as any);
-
-      const response = await axios.post(
-        `${API_URL}/users/${userId}/photo`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
+      formData.append('photo', { uri: photoUri, type: 'image/jpeg', name: 'profile.jpg' } as any);
+      const response = await axios.post(API_ENDPOINTS.UPLOAD_PHOTO(userId), formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       return response.data.data.photoUrl;
     } catch (error) {
       console.error('Error uploading profile photo:', error);
-      throw error;
-    }
-  }
-
-  async uploadCertification(userId: string, documentUri: string, certData: any): Promise<any> {
-    try {
-      const formData = new FormData();
-      formData.append('document', {
-        uri: documentUri,
-        type: 'application/pdf',
-        name: 'certification.pdf',
-      } as any);
-      formData.append('data', JSON.stringify(certData));
-
-      const response = await axios.post(
-        `${API_URL}/users/${userId}/certifications`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-      return response.data.data;
-    } catch (error) {
-      console.error('Error uploading certification:', error);
-      throw error;
-    }
-  }
-
-  async verifyPhone(userId: string, phone: string, code: string): Promise<boolean> {
-    try {
-      const response = await axios.post(`${API_URL}/users/${userId}/verify-phone`, {
-        phone,
-        code,
-      });
-      return response.data.success;
-    } catch (error) {
-      console.error('Error verifying phone:', error);
-      throw error;
-    }
-  }
-
-  async sendPhoneVerificationCode(userId: string, phone: string): Promise<void> {
-    try {
-      await axios.post(`${API_URL}/users/${userId}/send-verification`, {
-        phone,
-      });
-    } catch (error) {
-      console.error('Error sending verification code:', error);
       throw error;
     }
   }
