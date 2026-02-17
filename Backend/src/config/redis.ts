@@ -7,40 +7,44 @@ const isProduction = process.env.NODE_ENV === 'production';
 const redisClient = createClient({
   url: process.env.REDIS_URL || 'redis://localhost:6379',
   socket: {
-    reconnectStrategy: (retries) => {
-      if (retries > 10) {
-        console.error('Too many Redis reconnection attempts');
-        return new Error('Redis reconnection failed');
-      }
-      return retries * 100;
-    },
+    // In dev: don't retry at all. In prod: retry up to 10 times.
+    reconnectStrategy: isProduction
+      ? (retries) => {
+          if (retries > 10) return new Error('Redis reconnection failed');
+          return retries * 100;
+        }
+      : false, // false = disable reconnection entirely in dev
   },
 });
 
-redisClient.on('error', (err) => {
-  // In dev, only log short message - don't spam the console
+redisClient.on('error', () => {
+  // Silently ignore in dev - server keeps running
   if (isProduction) {
-    console.error('Redis Client Error:', err);
+    console.error('❌ Redis Client Error');
   }
 });
 
 redisClient.on('connect', () => console.log('Redis client connected'));
 redisClient.on('ready', () => console.log('✅ Redis connected'));
-redisClient.on('reconnecting', () => console.log('Redis client reconnecting...'));
 
-// Call this in server.ts to connect Redis
 export const connectRedis = async (): Promise<void> => {
+  if (!isProduction) {
+    // In dev, try once - if it fails, move on silently
+    try {
+      await redisClient.connect();
+      console.log('✅ Redis connected');
+    } catch {
+      console.log('⚠️  Redis unavailable - running without cache (dev mode)');
+    }
+    return;
+  }
+
+  // In production, Redis is required
   try {
     await redisClient.connect();
   } catch (error) {
-    if (isProduction) {
-      // In production, Redis is required - crash loudly
-      console.error('❌ Redis connection error:', error);
-      throw error;
-    } else {
-      // In development, Redis is optional - keep server running
-      console.log('⚠️  Redis unavailable - running without cache (dev mode)');
-    }
+    console.error('❌ Redis connection error:', error);
+    throw error;
   }
 };
 
