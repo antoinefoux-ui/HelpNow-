@@ -14,6 +14,11 @@ import { RootNavigator } from './navigation/RootNavigator';
 // i18n
 import './i18n';
 
+// Add right after imports, before App component
+ErrorUtils.setGlobalHandler((error, isFatal) => {
+  console.error('GLOBAL ERROR:', error.message, error.stack);
+});
+
 // Ignore specific warnings
 LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
