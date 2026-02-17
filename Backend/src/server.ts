@@ -23,7 +23,7 @@ import { initializeSocketHandlers } from './services/socketService';
 
 // Import database
 import { pool } from './config/database';
-import { redisClient } from './config/redis';
+import { redisClient, connectRedis } from './config/redis';
 
 // Load environment variables
 dotenv.config();
@@ -52,7 +52,7 @@ app.use(express.urlencoded({ extended: true }));
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 100,
   message: 'Too many requests from this IP, please try again later.',
 });
 app.use('/api/', limiter);
@@ -70,7 +70,7 @@ app.get('/', (_req: Request, res: Response) => {
       users: '/api/v1/users',
       emergencies: '/api/v1/emergencies',
       helpers: '/api/v1/helpers',
-    }
+    },
   });
 });
 
@@ -103,31 +103,39 @@ app.use(errorHandler);
 // Initialize socket handlers
 initializeSocketHandlers(io);
 
-// Database connection test
-pool.connect()
-  .then(() => console.log('✅ PostgreSQL connected'))
-  .catch((err) => console.error('❌ PostgreSQL connection error:', err));
+// Start server and connect services
+const PORT = process.env.PORT || 3001;
 
-// Redis connection test
-redisClient.connect()
-  .then(() => console.log('✅ Redis connected'))
-  .catch((err) => console.error('❌ Redis connection error:', err));
+const startServer = async () => {
+  // 1. Connect PostgreSQL
+  try {
+    await pool.connect();
+    console.log('✅ PostgreSQL connected');
+  } catch (err) {
+    console.error('❌ PostgreSQL connection error:', err);
+    process.exit(1); // DB is required - crash if it fails
+  }
 
-// Start server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 HelpNow API Server running on port ${PORT}`);
-  console.log(`📡 Socket.IO server ready`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+  // 2. Connect Redis (optional in development)
+  await connectRedis();
+
+  // 3. Start HTTP server
+  server.listen(PORT, () => {
+    console.log(`🚀 HelpNow API Server running on port ${PORT}`);
+    console.log(`📡 Socket.IO server ready`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+};
+
+startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
+  server.close(async () => {
     console.log('HTTP server closed');
-    pool.end();
-    redisClient.quit();
+    await pool.end();
+    await redisClient.quit().catch(() => {}); // Don't crash if Redis wasn't connected
     process.exit(0);
   });
 });
