@@ -2,23 +2,22 @@
 // Centralized API configuration for the HelpNow app
 
 export const API_CONFIG = {
-  BASE_URL: 'http://10.0.2.2:3000/api/v1',  // Changed from localhost
-  SOCKET_URL: 'http://10.0.2.2:3000',       // Changed from localhost
-  TIMEOUT: 10000, // 10 seconds
-  GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || "",
+  BASE_URL: 'http://10.0.2.2:3000/api/v1',
+  SOCKET_URL: 'http://10.0.2.2:3000',
+  TIMEOUT: 10000,
+  GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || '',
 };
 
 export const API_ENDPOINTS = {
-  
-    // Auth
+  // Auth
   AUTH: {
+    LOGIN: '/auth/login',
+    REGISTER: '/auth/register',
     LOGOUT: '/auth/logout',
     FORGOT_PASSWORD: '/auth/forgot-password',
-  // Auth endpoints
-  REGISTER: '/auth/register',
-  LOGIN: '/auth/login',
-},
-  
+    REFRESH: '/auth/refresh',
+  },
+
   // Users
   USERS: {
     GET: (userId: string) => `/users/${userId}`,
@@ -30,7 +29,7 @@ export const API_ENDPOINTS = {
     VERIFY_PHONE: (userId: string) => `/users/${userId}/verify-phone`,
     SEND_VERIFICATION: (userId: string) => `/users/${userId}/send-verification`,
   },
-  
+
   // Emergencies
   EMERGENCIES: {
     CREATE: '/emergencies',
@@ -45,7 +44,7 @@ export const API_ENDPOINTS = {
     RESOLVE: (requestId: string) => `/emergencies/${requestId}/resolve`,
     VOICE_NOTE: (requestId: string) => `/emergencies/${requestId}/voice-note`,
   },
-  
+
   // Helpers
   HELPERS: {
     LIST: '/helpers',
@@ -62,22 +61,22 @@ export const SOCKET_EVENTS = {
   CONNECT: 'connect',
   DISCONNECT: 'disconnect',
   ERROR: 'error',
-  
+
   // Emergency events
   EMERGENCY_CREATED: 'emergency:created',
   EMERGENCY_ACCEPTED: 'emergency:accepted',
   EMERGENCY_CANCELLED: 'emergency:cancelled',
   EMERGENCY_RESOLVED: 'emergency:resolved',
-  
+
   // Helper events
   HELPER_LOCATION_UPDATE: 'helper:location_update',
   HELPER_ARRIVED: 'helper:arrived',
   HELPER_AVAILABILITY: 'helper:set_availability',
-  
+
   // Room events
   JOIN_EMERGENCY: 'join:emergency',
   LEAVE_EMERGENCY: 'leave:emergency',
-  
+
   // Message events
   MESSAGE_SEND: 'message:send',
   MESSAGE_RECEIVED: 'message:received',
