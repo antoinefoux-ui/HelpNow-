@@ -1,1 +1,122 @@
-{}
+{
+  "app": {
+    "name": "HelpNow",
+    "tagline": "Núdzová pomoc, keď ju najviac potrebujete"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Zrušiť",
+    "yes": "Áno",
+    "no": "Nie",
+    "save": "Uložiť",
+    "delete": "Zmazať",
+    "edit": "Upraviť",
+    "back": "Späť",
+    "next": "Ďalej",
+    "done": "Hotovo",
+    "retry": "Skúsiť znova",
+    "close": "Zavrieť",
+    "confirm": "Potvrdiť",
+    "loading": "Načítavanie...",
+    "error": "Chyba",
+    "success": "Úspech",
+    "submit": "Odoslať",
+    "search": "Hľadať",
+    "settings": "Nastavenia",
+    "profile": "Profil",
+    "logout": "Odhlásiť"
+  },
+  "errors": {
+    "generic": "Niečo sa pokazilo. Skúste to znova.",
+    "network": "Chyba siete. Skontrolujte pripojenie.",
+    "locationUnavailable": "Polohu nie je možné získať.",
+    "permissionDenied": "Oprávnenie zamietnuté.",
+    "unauthorized": "Prosím prihláste sa.",
+    "notFound": "Nenájdené.",
+    "serverError": "Chyba servera. Skúste neskôr."
+  },
+  "home": {
+    "requestHelp": "Požiadať o pomoc",
+    "yourLocation": "Vaša poloha",
+    "nearbyHelpers": "{{count}} pomocníkov v okolí",
+    "emergencyContacts": "Núdzové kontakty",
+    "callEmergencyServices": "Pri ohrození života vždy volajte 112.",
+    "disclaimer": "HelpNow vás spája s vyškolenými dobrovoľníkmi. Vždy volajte oficiálne záchranné služby.",
+    "noEmergencyContacts": "Žiadne núdzové kontakty",
+    "refreshLocation": "↻ Obnoviť polohu"
+  },
+  "auth": {
+    "signIn": "Prihlásiť sa",
+    "signUp": "Zaregistrovať sa",
+    "signOut": "Odhlásiť",
+    "email": "E-mail",
+    "password": "Heslo",
+    "firstName": "Meno",
+    "lastName": "Priezvisko",
+    "phone": "Telefón",
+    "forgotPassword": "Zabudnuté heslo?",
+    "resetPassword": "Obnoviť",
+    "noAccount": "Nemáte účet?",
+    "hasAccount": "Máte účet?",
+    "welcomeBack": "Vitajte späť",
+    "createAccount": "Vytvoriť účet"
+  },
+  "emergency": {
+    "title": "Požiadať o pomoc",
+    "selectType": "Akú pomoc potrebujete?",
+    "description": "Opíšte situáciu (nepovinné)",
+    "descriptionPlaceholder": "Pridajte podrobnosti...",
+    "submit": "Odoslať žiadosť",
+    "submitting": "Odosiela sa...",
+    "cancelRequest": "Zrušiť žiadosť",
+    "confirmCancel": "Naozaj chcete zrušiť?",
+    "helpOnTheWay": "Pomoc je na ceste!",
+    "helperArrived": "Váš pomocník dorazil",
+    "resolved": "Situácia vyriešená",
+    "eta": "Príchod za {{minutes}} min",
+    "types": {
+      "medical": "Zdravotná",
+      "accident": "Nehoda",
+      "fire": "Požiar",
+      "security": "Bezpečnosť",
+      "mental_health": "Duševné zdravie",
+      "other": "Iné"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "editProfile": "Upraviť profil",
+    "personalInfo": "Osobné údaje",
+    "emergencyContacts": "Núdzové kontakty",
+    "addContact": "Pridať kontakt",
+    "helperProfile": "Profil pomocníka",
+    "becomeHelper": "Stať sa pomocníkom",
+    "rating": "Hodnotenie",
+    "totalHelps": "Celkom pomocí",
+    "verified": "Overený",
+    "memberSince": "Člen od {{date}}"
+  },
+  "settings": {
+    "title": "Nastavenia",
+    "notifications": "Oznámenia",
+    "language": "Jazyk",
+    "privacy": "Súkromie",
+    "terms": "Podmienky služby",
+    "about": "O aplikácii",
+    "version": "Verzia {{version}}",
+    "support": "Podpora",
+    "deleteAccount": "Zmazať účet",
+    "confirmDeleteAccount": "Naozaj chcete zmazať účet?"
+  },
+  "helper": {
+    "available": "Dostupný",
+    "unavailable": "Nedostupný",
+    "newRequest": "Nová žiadosť v okolí",
+    "accept": "Prijať",
+    "decline": "Odmietnuť",
+    "arrived": "Dorazil som",
+    "resolve": "Označiť ako vyriešené",
+    "distance": "{{distance}} odtiaľ",
+    "responseTime": "Odpovedzte do {{seconds}}s"
+  }
+}

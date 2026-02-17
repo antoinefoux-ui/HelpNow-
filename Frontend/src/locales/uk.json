@@ -1,1 +1,122 @@
-{}
+{
+  "app": {
+    "name": "HelpNow",
+    "tagline": "Екстрена допомога, коли вона потрібна найбільше"
+  },
+  "common": {
+    "ok": "ОК",
+    "cancel": "Скасувати",
+    "yes": "Так",
+    "no": "Ні",
+    "save": "Зберегти",
+    "delete": "Видалити",
+    "edit": "Редагувати",
+    "back": "Назад",
+    "next": "Далі",
+    "done": "Готово",
+    "retry": "Повторити",
+    "close": "Закрити",
+    "confirm": "Підтвердити",
+    "loading": "Завантаження...",
+    "error": "Помилка",
+    "success": "Успіх",
+    "submit": "Надіслати",
+    "search": "Пошук",
+    "settings": "Налаштування",
+    "profile": "Профіль",
+    "logout": "Вийти"
+  },
+  "errors": {
+    "generic": "Щось пішло не так. Спробуйте знову.",
+    "network": "Помилка мережі. Перевірте підключення.",
+    "locationUnavailable": "Не вдається отримати місцезнаходження.",
+    "permissionDenied": "Дозвіл відхилено.",
+    "unauthorized": "Будь ласка, увійдіть.",
+    "notFound": "Не знайдено.",
+    "serverError": "Помилка сервера. Спробуйте пізніше."
+  },
+  "home": {
+    "requestHelp": "Запросити допомогу",
+    "yourLocation": "Ваше місцезнаходження",
+    "nearbyHelpers": "{{count}} помічників поруч",
+    "emergencyContacts": "Екстрені контакти",
+    "callEmergencyServices": "При загрозі життю завжди дзвоніть 112.",
+    "disclaimer": "HelpNow з'єднує вас з навченими волонтерами. Завжди телефонуйте офіційним службам екстреної допомоги.",
+    "noEmergencyContacts": "Екстрені контакти не додані",
+    "refreshLocation": "↻ Оновити місцезнаходження"
+  },
+  "auth": {
+    "signIn": "Увійти",
+    "signUp": "Зареєструватися",
+    "signOut": "Вийти",
+    "email": "Email",
+    "password": "Пароль",
+    "firstName": "Ім'я",
+    "lastName": "Прізвище",
+    "phone": "Телефон",
+    "forgotPassword": "Забули пароль?",
+    "resetPassword": "Скинути",
+    "noAccount": "Немає акаунту?",
+    "hasAccount": "Вже є акаунт?",
+    "welcomeBack": "З поверненням",
+    "createAccount": "Створити акаунт"
+  },
+  "emergency": {
+    "title": "Запросити екстрену допомогу",
+    "selectType": "Яка допомога вам потрібна?",
+    "description": "Опишіть ситуацію (необов'язково)",
+    "descriptionPlaceholder": "Додайте деталі...",
+    "submit": "Надіслати запит",
+    "submitting": "Надсилання...",
+    "cancelRequest": "Скасувати запит",
+    "confirmCancel": "Ви впевнені, що хочете скасувати?",
+    "helpOnTheWay": "Допомога вже їде!",
+    "helperArrived": "Помічник прибув",
+    "resolved": "Ситуацію вирішено",
+    "eta": "Прибуття через {{minutes}} хв",
+    "types": {
+      "medical": "Медична",
+      "accident": "Аварія",
+      "fire": "Пожежа",
+      "security": "Безпека",
+      "mental_health": "Психічне здоров'я",
+      "other": "Інше"
+    }
+  },
+  "profile": {
+    "title": "Профіль",
+    "editProfile": "Редагувати профіль",
+    "personalInfo": "Особисті дані",
+    "emergencyContacts": "Екстрені контакти",
+    "addContact": "Додати контакт",
+    "helperProfile": "Профіль помічника",
+    "becomeHelper": "Стати помічником",
+    "rating": "Рейтинг",
+    "totalHelps": "Всього допомог",
+    "verified": "Підтверджено",
+    "memberSince": "Учасник з {{date}}"
+  },
+  "settings": {
+    "title": "Налаштування",
+    "notifications": "Сповіщення",
+    "language": "Мова",
+    "privacy": "Конфіденційність",
+    "terms": "Умови використання",
+    "about": "Про додаток",
+    "version": "Версія {{version}}",
+    "support": "Підтримка",
+    "deleteAccount": "Видалити акаунт",
+    "confirmDeleteAccount": "Ви впевнені, що хочете видалити акаунт?"
+  },
+  "helper": {
+    "available": "Доступний",
+    "unavailable": "Недоступний",
+    "newRequest": "Новий запит поруч",
+    "accept": "Прийняти",
+    "decline": "Відхилити",
+    "arrived": "Я прибув",
+    "resolve": "Позначити як вирішене",
+    "distance": "{{distance}} звідси",
+    "responseTime": "Відповідайте протягом {{seconds}}с"
+  }
+}

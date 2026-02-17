@@ -1,1 +1,122 @@
-{}
+{
+  "app": {
+    "name": "HelpNow",
+    "tagline": "Aiuto d'emergenza quando ne hai più bisogno"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Annulla",
+    "yes": "Sì",
+    "no": "No",
+    "save": "Salva",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "back": "Indietro",
+    "next": "Avanti",
+    "done": "Fatto",
+    "retry": "Riprova",
+    "close": "Chiudi",
+    "confirm": "Conferma",
+    "loading": "Caricamento...",
+    "error": "Errore",
+    "success": "Successo",
+    "submit": "Invia",
+    "search": "Cerca",
+    "settings": "Impostazioni",
+    "profile": "Profilo",
+    "logout": "Esci"
+  },
+  "errors": {
+    "generic": "Qualcosa è andato storto. Riprova.",
+    "network": "Errore di rete. Controlla la connessione.",
+    "locationUnavailable": "Impossibile ottenere la tua posizione.",
+    "permissionDenied": "Autorizzazione negata.",
+    "unauthorized": "Accedi per continuare.",
+    "notFound": "Non trovato.",
+    "serverError": "Errore del server. Riprova più tardi."
+  },
+  "home": {
+    "requestHelp": "Richiedi aiuto",
+    "yourLocation": "La tua posizione",
+    "nearbyHelpers": "{{count}} aiutanti nelle vicinanze",
+    "emergencyContacts": "Contatti di emergenza",
+    "callEmergencyServices": "Per emergenze gravi, chiama sempre il 112 prima.",
+    "disclaimer": "HelpNow ti mette in contatto con volontari formati. Chiama sempre i servizi di emergenza ufficiali.",
+    "noEmergencyContacts": "Nessun contatto di emergenza aggiunto",
+    "refreshLocation": "↻ Aggiorna posizione"
+  },
+  "auth": {
+    "signIn": "Accedi",
+    "signUp": "Registrati",
+    "signOut": "Esci",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "Nome",
+    "lastName": "Cognome",
+    "phone": "Telefono",
+    "forgotPassword": "Password dimenticata?",
+    "resetPassword": "Reimposta",
+    "noAccount": "Non hai un account?",
+    "hasAccount": "Hai già un account?",
+    "welcomeBack": "Bentornato",
+    "createAccount": "Crea account"
+  },
+  "emergency": {
+    "title": "Richiedi aiuto d'emergenza",
+    "selectType": "Di che tipo di aiuto hai bisogno?",
+    "description": "Descrivi la tua emergenza (opzionale)",
+    "descriptionPlaceholder": "Aggiungi dettagli...",
+    "submit": "Invia richiesta",
+    "submitting": "Invio...",
+    "cancelRequest": "Annulla richiesta",
+    "confirmCancel": "Vuoi annullare la richiesta?",
+    "helpOnTheWay": "L'aiuto è in arrivo!",
+    "helperArrived": "Il tuo aiutante è arrivato",
+    "resolved": "Emergenza risolta",
+    "eta": "ETA: {{minutes}} min",
+    "types": {
+      "medical": "Medico",
+      "accident": "Incidente",
+      "fire": "Incendio",
+      "security": "Sicurezza",
+      "mental_health": "Salute mentale",
+      "other": "Altro"
+    }
+  },
+  "profile": {
+    "title": "Profilo",
+    "editProfile": "Modifica profilo",
+    "personalInfo": "Informazioni personali",
+    "emergencyContacts": "Contatti di emergenza",
+    "addContact": "Aggiungi contatto",
+    "helperProfile": "Profilo aiutante",
+    "becomeHelper": "Diventa aiutante",
+    "rating": "Valutazione",
+    "totalHelps": "Aiuti totali",
+    "verified": "Verificato",
+    "memberSince": "Membro dal {{date}}"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "notifications": "Notifiche",
+    "language": "Lingua",
+    "privacy": "Privacy",
+    "terms": "Termini di servizio",
+    "about": "Informazioni",
+    "version": "Versione {{version}}",
+    "support": "Supporto",
+    "deleteAccount": "Elimina account",
+    "confirmDeleteAccount": "Sei sicuro di voler eliminare il tuo account?"
+  },
+  "helper": {
+    "available": "Disponibile",
+    "unavailable": "Non disponibile",
+    "newRequest": "Nuova richiesta vicina",
+    "accept": "Accetta",
+    "decline": "Rifiuta",
+    "arrived": "Sono arrivato",
+    "resolve": "Segna come risolto",
+    "distance": "A {{distance}}",
+    "responseTime": "Rispondi entro {{seconds}}s"
+  }
+}

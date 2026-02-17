@@ -1,1 +1,122 @@
-{}
+{
+  "app": {
+    "name": "HelpNow",
+    "tagline": "Pomoc w nagłych przypadkach, kiedy jej najbardziej potrzebujesz"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Anuluj",
+    "yes": "Tak",
+    "no": "Nie",
+    "save": "Zapisz",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "back": "Wstecz",
+    "next": "Dalej",
+    "done": "Gotowe",
+    "retry": "Spróbuj ponownie",
+    "close": "Zamknij",
+    "confirm": "Potwierdź",
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "success": "Sukces",
+    "submit": "Wyślij",
+    "search": "Szukaj",
+    "settings": "Ustawienia",
+    "profile": "Profil",
+    "logout": "Wyloguj"
+  },
+  "errors": {
+    "generic": "Coś poszło nie tak. Spróbuj ponownie.",
+    "network": "Błąd sieci. Sprawdź połączenie.",
+    "locationUnavailable": "Nie można uzyskać lokalizacji.",
+    "permissionDenied": "Odmowa uprawnień.",
+    "unauthorized": "Zaloguj się, aby kontynuować.",
+    "notFound": "Nie znaleziono.",
+    "serverError": "Błąd serwera. Spróbuj później."
+  },
+  "home": {
+    "requestHelp": "Poproś o pomoc",
+    "yourLocation": "Twoja lokalizacja",
+    "nearbyHelpers": "{{count}} pomocników w pobliżu",
+    "emergencyContacts": "Kontakty alarmowe",
+    "callEmergencyServices": "W nagłych przypadkach zawsze najpierw dzwoń pod 112.",
+    "disclaimer": "HelpNow łączy Cię z przeszkolonymi wolontariuszami. Zawsze dzwoń na oficjalne służby ratunkowe.",
+    "noEmergencyContacts": "Brak kontaktów alarmowych",
+    "refreshLocation": "↻ Odśwież lokalizację"
+  },
+  "auth": {
+    "signIn": "Zaloguj się",
+    "signUp": "Zarejestruj się",
+    "signOut": "Wyloguj",
+    "email": "Email",
+    "password": "Hasło",
+    "firstName": "Imię",
+    "lastName": "Nazwisko",
+    "phone": "Telefon",
+    "forgotPassword": "Zapomniałeś hasła?",
+    "resetPassword": "Zresetuj",
+    "noAccount": "Nie masz konta?",
+    "hasAccount": "Masz już konto?",
+    "welcomeBack": "Witaj z powrotem",
+    "createAccount": "Utwórz konto"
+  },
+  "emergency": {
+    "title": "Poproś o pomoc",
+    "selectType": "Jakiego rodzaju pomocy potrzebujesz?",
+    "description": "Opisz sytuację (opcjonalne)",
+    "descriptionPlaceholder": "Dodaj szczegóły...",
+    "submit": "Wyślij prośbę",
+    "submitting": "Wysyłanie...",
+    "cancelRequest": "Anuluj prośbę",
+    "confirmCancel": "Czy na pewno chcesz anulować?",
+    "helpOnTheWay": "Pomoc jest w drodze!",
+    "helperArrived": "Pomocnik dotarł",
+    "resolved": "Sytuacja rozwiązana",
+    "eta": "Czas przybycia: {{minutes}} min",
+    "types": {
+      "medical": "Medyczne",
+      "accident": "Wypadek",
+      "fire": "Pożar",
+      "security": "Bezpieczeństwo",
+      "mental_health": "Zdrowie psychiczne",
+      "other": "Inne"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "editProfile": "Edytuj profil",
+    "personalInfo": "Dane osobowe",
+    "emergencyContacts": "Kontakty alarmowe",
+    "addContact": "Dodaj kontakt",
+    "helperProfile": "Profil pomocnika",
+    "becomeHelper": "Zostań pomocnikiem",
+    "rating": "Ocena",
+    "totalHelps": "Łączna pomoc",
+    "verified": "Zweryfikowany",
+    "memberSince": "Członek od {{date}}"
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "notifications": "Powiadomienia",
+    "language": "Język",
+    "privacy": "Prywatność",
+    "terms": "Warunki usługi",
+    "about": "O aplikacji",
+    "version": "Wersja {{version}}",
+    "support": "Wsparcie",
+    "deleteAccount": "Usuń konto",
+    "confirmDeleteAccount": "Czy na pewno chcesz usunąć konto?"
+  },
+  "helper": {
+    "available": "Dostępny",
+    "unavailable": "Niedostępny",
+    "newRequest": "Nowa prośba w pobliżu",
+    "accept": "Akceptuj",
+    "decline": "Odrzuć",
+    "arrived": "Dotarłem",
+    "resolve": "Oznacz jako rozwiązane",
+    "distance": "{{distance}} stąd",
+    "responseTime": "Odpowiedz w ciągu {{seconds}}s"
+  }
+}

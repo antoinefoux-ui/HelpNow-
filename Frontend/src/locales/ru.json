@@ -1,1 +1,122 @@
-{}
+{
+  "app": {
+    "name": "HelpNow",
+    "tagline": "Экстренная помощь, когда она нужна больше всего"
+  },
+  "common": {
+    "ok": "ОК",
+    "cancel": "Отмена",
+    "yes": "Да",
+    "no": "Нет",
+    "save": "Сохранить",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "back": "Назад",
+    "next": "Далее",
+    "done": "Готово",
+    "retry": "Повторить",
+    "close": "Закрыть",
+    "confirm": "Подтвердить",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успех",
+    "submit": "Отправить",
+    "search": "Поиск",
+    "settings": "Настройки",
+    "profile": "Профиль",
+    "logout": "Выйти"
+  },
+  "errors": {
+    "generic": "Что-то пошло не так. Попробуйте снова.",
+    "network": "Ошибка сети. Проверьте подключение.",
+    "locationUnavailable": "Не удаётся получить местоположение.",
+    "permissionDenied": "Разрешение отклонено.",
+    "unauthorized": "Пожалуйста, войдите.",
+    "notFound": "Не найдено.",
+    "serverError": "Ошибка сервера. Попробуйте позже."
+  },
+  "home": {
+    "requestHelp": "Запросить помощь",
+    "yourLocation": "Ваше местоположение",
+    "nearbyHelpers": "{{count}} помощников рядом",
+    "emergencyContacts": "Экстренные контакты",
+    "callEmergencyServices": "При угрозе жизни всегда сначала звоните 112.",
+    "disclaimer": "HelpNow связывает вас с обученными волонтёрами. Всегда звоните официальным службам экстренной помощи.",
+    "noEmergencyContacts": "Экстренные контакты не добавлены",
+    "refreshLocation": "↻ Обновить местоположение"
+  },
+  "auth": {
+    "signIn": "Войти",
+    "signUp": "Зарегистрироваться",
+    "signOut": "Выйти",
+    "email": "Email",
+    "password": "Пароль",
+    "firstName": "Имя",
+    "lastName": "Фамилия",
+    "phone": "Телефон",
+    "forgotPassword": "Забыли пароль?",
+    "resetPassword": "Сбросить",
+    "noAccount": "Нет аккаунта?",
+    "hasAccount": "Уже есть аккаунт?",
+    "welcomeBack": "С возвращением",
+    "createAccount": "Создать аккаунт"
+  },
+  "emergency": {
+    "title": "Запросить экстренную помощь",
+    "selectType": "Какая помощь вам нужна?",
+    "description": "Опишите ситуацию (необязательно)",
+    "descriptionPlaceholder": "Добавьте детали...",
+    "submit": "Отправить запрос",
+    "submitting": "Отправка...",
+    "cancelRequest": "Отменить запрос",
+    "confirmCancel": "Вы уверены, что хотите отменить?",
+    "helpOnTheWay": "Помощь уже едет!",
+    "helperArrived": "Помощник прибыл",
+    "resolved": "Ситуация разрешена",
+    "eta": "Прибытие через {{minutes}} мин",
+    "types": {
+      "medical": "Медицинская",
+      "accident": "Авария",
+      "fire": "Пожар",
+      "security": "Безопасность",
+      "mental_health": "Психическое здоровье",
+      "other": "Другое"
+    }
+  },
+  "profile": {
+    "title": "Профиль",
+    "editProfile": "Редактировать профиль",
+    "personalInfo": "Личные данные",
+    "emergencyContacts": "Экстренные контакты",
+    "addContact": "Добавить контакт",
+    "helperProfile": "Профиль помощника",
+    "becomeHelper": "Стать помощником",
+    "rating": "Рейтинг",
+    "totalHelps": "Всего помощей",
+    "verified": "Подтверждён",
+    "memberSince": "Участник с {{date}}"
+  },
+  "settings": {
+    "title": "Настройки",
+    "notifications": "Уведомления",
+    "language": "Язык",
+    "privacy": "Конфиденциальность",
+    "terms": "Условия использования",
+    "about": "О приложении",
+    "version": "Версия {{version}}",
+    "support": "Поддержка",
+    "deleteAccount": "Удалить аккаунт",
+    "confirmDeleteAccount": "Вы уверены, что хотите удалить аккаунт?"
+  },
+  "helper": {
+    "available": "Доступен",
+    "unavailable": "Недоступен",
+    "newRequest": "Новый запрос рядом",
+    "accept": "Принять",
+    "decline": "Отклонить",
+    "arrived": "Я прибыл",
+    "resolve": "Отметить как решённое",
+    "distance": "{{distance}} отсюда",
+    "responseTime": "Ответьте за {{seconds}}с"
+  }
+}

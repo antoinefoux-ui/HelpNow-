@@ -1,1 +1,122 @@
-{}
+{
+  "app": {
+    "name": "HelpNow",
+    "tagline": "Notfallhilfe, wenn Sie sie am meisten brauchen"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "yes": "Ja",
+    "no": "Nein",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "back": "Zurück",
+    "next": "Weiter",
+    "done": "Fertig",
+    "retry": "Wiederholen",
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "submit": "Absenden",
+    "search": "Suchen",
+    "settings": "Einstellungen",
+    "profile": "Profil",
+    "logout": "Abmelden"
+  },
+  "errors": {
+    "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "network": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.",
+    "locationUnavailable": "Standort nicht verfügbar.",
+    "permissionDenied": "Berechtigung verweigert.",
+    "unauthorized": "Bitte melden Sie sich an.",
+    "notFound": "Nicht gefunden.",
+    "serverError": "Serverfehler. Bitte versuchen Sie es später erneut."
+  },
+  "home": {
+    "requestHelp": "Hilfe anfordern",
+    "yourLocation": "Ihr Standort",
+    "nearbyHelpers": "{{count}} Helfer in der Nähe",
+    "emergencyContacts": "Notfallkontakte",
+    "callEmergencyServices": "Bei lebensbedrohlichen Notfällen rufen Sie immer zuerst 112 an.",
+    "disclaimer": "HelpNow verbindet Sie mit geschulten Freiwilligen. Rufen Sie bei Notfällen immer den offiziellen Rettungsdienst an.",
+    "noEmergencyContacts": "Keine Notfallkontakte hinzugefügt",
+    "refreshLocation": "↻ Standort aktualisieren"
+  },
+  "auth": {
+    "signIn": "Anmelden",
+    "signUp": "Registrieren",
+    "signOut": "Abmelden",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "phone": "Telefon",
+    "forgotPassword": "Passwort vergessen?",
+    "resetPassword": "Zurücksetzen",
+    "noAccount": "Kein Konto?",
+    "hasAccount": "Bereits ein Konto?",
+    "welcomeBack": "Willkommen zurück",
+    "createAccount": "Konto erstellen"
+  },
+  "emergency": {
+    "title": "Notfallhilfe anfordern",
+    "selectType": "Welche Art von Hilfe benötigen Sie?",
+    "description": "Beschreiben Sie Ihren Notfall (optional)",
+    "descriptionPlaceholder": "Details hinzufügen...",
+    "submit": "Hilfe senden",
+    "submitting": "Senden...",
+    "cancelRequest": "Anfrage abbrechen",
+    "confirmCancel": "Möchten Sie Ihre Anfrage wirklich abbrechen?",
+    "helpOnTheWay": "Hilfe ist unterwegs!",
+    "helperArrived": "Ihr Helfer ist angekommen",
+    "resolved": "Notfall gelöst",
+    "eta": "ETA: {{minutes}} Min",
+    "types": {
+      "medical": "Medizinisch",
+      "accident": "Unfall",
+      "fire": "Brand",
+      "security": "Sicherheit",
+      "mental_health": "Psychische Gesundheit",
+      "other": "Sonstiges"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "editProfile": "Profil bearbeiten",
+    "personalInfo": "Persönliche Daten",
+    "emergencyContacts": "Notfallkontakte",
+    "addContact": "Kontakt hinzufügen",
+    "helperProfile": "Helferprofil",
+    "becomeHelper": "Helfer werden",
+    "rating": "Bewertung",
+    "totalHelps": "Gesamthilfen",
+    "verified": "Verifiziert",
+    "memberSince": "Mitglied seit {{date}}"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "notifications": "Benachrichtigungen",
+    "language": "Sprache",
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen",
+    "about": "Über",
+    "version": "Version {{version}}",
+    "support": "Support",
+    "deleteAccount": "Konto löschen",
+    "confirmDeleteAccount": "Möchten Sie Ihr Konto wirklich löschen?"
+  },
+  "helper": {
+    "available": "Verfügbar",
+    "unavailable": "Nicht verfügbar",
+    "newRequest": "Neue Anfrage in der Nähe",
+    "accept": "Akzeptieren",
+    "decline": "Ablehnen",
+    "arrived": "Ich bin angekommen",
+    "resolve": "Als gelöst markieren",
+    "distance": "{{distance}} entfernt",
+    "responseTime": "Antworten Sie in {{seconds}}s"
+  }
+}

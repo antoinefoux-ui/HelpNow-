@@ -1,1 +1,122 @@
-{}
+{
+  "app": {
+    "name": "HelpNow",
+    "tagline": "Aide d'urgence, quand vous en avez le plus besoin"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Annuler",
+    "yes": "Oui",
+    "no": "Non",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "back": "Retour",
+    "next": "Suivant",
+    "done": "Terminé",
+    "retry": "Réessayer",
+    "close": "Fermer",
+    "confirm": "Confirmer",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "submit": "Envoyer",
+    "search": "Rechercher",
+    "settings": "Paramètres",
+    "profile": "Profil",
+    "logout": "Déconnexion"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite. Veuillez réessayer.",
+    "network": "Erreur réseau. Vérifiez votre connexion.",
+    "locationUnavailable": "Impossible d'obtenir votre position.",
+    "permissionDenied": "Permission refusée.",
+    "unauthorized": "Veuillez vous connecter.",
+    "notFound": "Introuvable.",
+    "serverError": "Erreur serveur. Veuillez réessayer."
+  },
+  "home": {
+    "requestHelp": "Demander de l'aide",
+    "yourLocation": "Votre position",
+    "nearbyHelpers": "{{count}} secouristes à proximité",
+    "emergencyContacts": "Contacts d'urgence",
+    "callEmergencyServices": "Pour les urgences, appelez toujours le 15, 17, 18 ou 112 en premier.",
+    "disclaimer": "HelpNow vous connecte avec des volontaires formés. Appelez toujours les services d'urgence officiels.",
+    "noEmergencyContacts": "Aucun contact d'urgence ajouté",
+    "refreshLocation": "↻ Actualiser la position"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "signOut": "Se déconnecter",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "phone": "Téléphone",
+    "forgotPassword": "Mot de passe oublié ?",
+    "resetPassword": "Réinitialiser",
+    "noAccount": "Pas de compte ?",
+    "hasAccount": "Déjà un compte ?",
+    "welcomeBack": "Bon retour",
+    "createAccount": "Créer un compte"
+  },
+  "emergency": {
+    "title": "Demander de l'aide",
+    "selectType": "De quel type d'aide avez-vous besoin ?",
+    "description": "Décrivez votre urgence (optionnel)",
+    "descriptionPlaceholder": "Ajoutez des détails...",
+    "submit": "Envoyer la demande",
+    "submitting": "Envoi...",
+    "cancelRequest": "Annuler la demande",
+    "confirmCancel": "Voulez-vous annuler votre demande ?",
+    "helpOnTheWay": "L'aide est en route !",
+    "helperArrived": "Votre secouriste est arrivé",
+    "resolved": "Urgence résolue",
+    "eta": "Arrivée dans {{minutes}} min",
+    "types": {
+      "medical": "Médical",
+      "accident": "Accident",
+      "fire": "Incendie",
+      "security": "Sécurité",
+      "mental_health": "Santé mentale",
+      "other": "Autre"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "editProfile": "Modifier le profil",
+    "personalInfo": "Informations personnelles",
+    "emergencyContacts": "Contacts d'urgence",
+    "addContact": "Ajouter un contact",
+    "helperProfile": "Profil secouriste",
+    "becomeHelper": "Devenir secouriste",
+    "rating": "Note",
+    "totalHelps": "Total des aides",
+    "verified": "Vérifié",
+    "memberSince": "Membre depuis {{date}}"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "notifications": "Notifications",
+    "language": "Langue",
+    "privacy": "Confidentialité",
+    "terms": "Conditions d'utilisation",
+    "about": "À propos",
+    "version": "Version {{version}}",
+    "support": "Support",
+    "deleteAccount": "Supprimer le compte",
+    "confirmDeleteAccount": "Êtes-vous sûr de vouloir supprimer votre compte ?"
+  },
+  "helper": {
+    "available": "Disponible",
+    "unavailable": "Indisponible",
+    "newRequest": "Nouvelle demande à proximité",
+    "accept": "Accepter",
+    "decline": "Refuser",
+    "arrived": "Je suis arrivé",
+    "resolve": "Marquer comme résolu",
+    "distance": "À {{distance}}",
+    "responseTime": "Répondez dans {{seconds}}s"
+  }
+}
