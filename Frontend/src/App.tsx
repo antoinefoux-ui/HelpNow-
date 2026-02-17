@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatusBar, LogBox } from 'react-native';
+import { StatusBar, LogBox, View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -14,9 +14,10 @@ import { RootNavigator } from './navigation/RootNavigator';
 // i18n
 import './i18n';
 
-// Add right after imports, before App component
+// Global error handler
 ErrorUtils.setGlobalHandler((error, isFatal) => {
-  console.error('GLOBAL ERROR:', error.message, error.stack);
+  console.error('🔴 GLOBAL ERROR:', error.name, error.message);
+  console.error('Stack:', error.stack);
 });
 
 // Ignore specific warnings
@@ -24,20 +25,62 @@ LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
 ]);
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('🔴 ERROR BOUNDARY CAUGHT:', error.message);
+    console.error('Component Stack:', errorInfo.componentStack);
+    console.error('Full Error:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>
+            App Crashed
+          </Text>
+          <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+            {this.state.error?.message || 'Unknown error'}
+          </Text>
+          <Text style={{ fontSize: 12, color: '#999', marginTop: 20, textAlign: 'center' }}>
+            Check Metro console for full error
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const App: React.FC = () => {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <AuthProvider>
-          <EmergencyProvider>
-            <NavigationContainer>
-              <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-              <RootNavigator />
-            </NavigationContainer>
-          </EmergencyProvider>
-        </AuthProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <EmergencyProvider>
+              <NavigationContainer>
+                <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+                <RootNavigator />
+              </NavigationContainer>
+            </EmergencyProvider>
+          </AuthProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 };
 
