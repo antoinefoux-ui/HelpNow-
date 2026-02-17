@@ -43,7 +43,9 @@
     "callEmergencyServices": "При загрозі життю завжди дзвоніть 112.",
     "disclaimer": "HelpNow з'єднує вас з навченими волонтерами. Завжди телефонуйте офіційним службам екстреної допомоги.",
     "noEmergencyContacts": "Екстрені контакти не додані",
-    "refreshLocation": "↻ Оновити місцезнаходження"
+    "refreshLocation": "↻ Оновити місцезнаходження",
+    "title": "Головна",
+    "recentActivity": "Активність"
   },
   "auth": {
     "signIn": "Увійти",
@@ -117,6 +119,12 @@
     "arrived": "Я прибув",
     "resolve": "Позначити як вирішене",
     "distance": "{{distance}} звідси",
-    "responseTime": "Відповідайте протягом {{seconds}}с"
+    "responseTime": "Відповідайте протягом {{seconds}}с",
+    "title": "Помічник"
+  },
+  "activity": {
+    "title": "Активність",
+    "noActivity": "Немає активності",
+    "history": "Історія"
   }
 }
