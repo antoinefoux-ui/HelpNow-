@@ -7,18 +7,16 @@ import {
   ScrollView,
   Alert,
   Linking,
-  Platform,
-  PermissionsAndroid,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useEmergency } from '../../contexts/EmergencyContext';
-import { RootStackParamList, Location } from '../../types';
+import { RootStackParamList, Location as LocationType } from '../../types';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -28,7 +26,7 @@ const HomeScreen: React.FC = () => {
   const { user } = useAuth();
   const { activeRequest } = useEmergency();
 
-  const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<LocationType | null>(null);
   const [address, setAddress] = useState<string>('');
   const [nearbyHelpersCount, setNearbyHelpersCount] = useState<number>(0);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -39,102 +37,60 @@ const HomeScreen: React.FC = () => {
     }
   }, [activeRequest, navigation]);
 
-  // ✅ On mount: request permission then fetch — no state dependency
   useEffect(() => {
     initLocation();
   }, []);
 
-  // ✅ FIX: permission result returned directly, not stored in state
-  // This eliminates the race condition where locationPermissionGranted
-  // was still false when getCurrentLocation() checked it
   const requestLocationPermission = async (): Promise<boolean> => {
     try {
-      if (Platform.OS === 'ios') {
-        const result = await Geolocation.requestAuthorization('whenInUse');
-        return result === 'granted';
-      }
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') return true;
 
-      if (Platform.OS === 'android') {
-        // Check first — avoids showing dialog if already granted
-        const alreadyGranted = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-        );
-        if (alreadyGranted) return true;
-
-        const result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Location Permission',
-            message:
-              'HelpNow needs your location to connect you with nearby helpers during emergencies.',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'Allow',
-          }
-        );
-
-        if (result === PermissionsAndroid.RESULTS.GRANTED) return true;
-
-        if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-          Alert.alert(
-            'Location Required',
-            'Location permission was permanently denied. Please enable it in Settings.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-            ]
-          );
-        }
-        return false;
-      }
+      Alert.alert(
+        'Location Required',
+        'Location permission was denied. Please enable it in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
+      );
+      return false;
     } catch (error) {
       console.error('Permission request error:', error);
+      return false;
     }
-    return false;
   };
 
-  // ✅ FIX: fetchLocation does NOT check permission state —
-  // it is only ever called after permission is confirmed
-  const fetchLocation = useCallback(() => {
+  const fetchLocation = useCallback(async () => {
     setLocationLoading(true);
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const location: Location = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-        };
-        setCurrentLocation(location);
-        setAddress(
-          `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
-        );
-        setNearbyHelpersCount(Math.floor(Math.random() * 20) + 5);
-        setLocationLoading(false);
-      },
-      (error) => {
-        setLocationLoading(false);
-        console.error('Geolocation error:', error.code, error.message);
-
-        let message = 'Unable to get your location.';
-        if (error.code === 2) {
-          message = 'GPS is disabled. Please enable location services.';
-        } else if (error.code === 3) {
-          message = 'Location request timed out. Please try again.';
-        }
-
-        Alert.alert('Location Error', message, [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: () => fetchLocation() },
-        ]);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000,
-        forceRequestLocation: true, // Android: bypass cached/mock location
-        showLocationDialog: true,   // Android: prompt user to enable GPS
+    try {
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const loc: LocationType = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      };
+      setCurrentLocation(loc);
+      setAddress(
+        `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`
+      );
+      setNearbyHelpersCount(Math.floor(Math.random() * 20) + 5);
+    } catch (error: any) {
+      let message = 'Unable to get your location.';
+      if (error.code === 'E_LOCATION_SERVICES_DISABLED') {
+        message = 'GPS is disabled. Please enable location services.';
+      } else if (error.code === 'E_LOCATION_TIMEOUT') {
+        message = 'Location request timed out. Please try again.';
       }
-    );
+      Alert.alert('Location Error', message, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Retry', onPress: () => fetchLocation() },
+      ]);
+    } finally {
+      setLocationLoading(false);
+    }
   }, []);
 
   const initLocation = useCallback(async () => {
