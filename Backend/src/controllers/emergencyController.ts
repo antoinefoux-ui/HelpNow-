@@ -7,21 +7,17 @@ class EmergencyController {
    */
   async createEmergency(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { seekerId, type, location, address, seekerInfo } = req.body;
+      const { seekerId, type, location } = req.body;
 
       const result = await pool.query(
-        `INSERT INTO emergencies 
-          (user_id, latitude, longitude, category, address, seeker_name, seeker_phone, status, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', NOW())
+        `INSERT INTO emergencies (user_id, latitude, longitude, category, status, created_at)
+         VALUES ($1, $2, $3, $4, 'pending', NOW())
          RETURNING *`,
         [
           seekerId,
           location?.latitude,
           location?.longitude,
           type,
-          address || null,
-          seekerInfo?.name || null,
-          seekerInfo?.phone || null,
         ]
       );
 
