@@ -28,13 +28,15 @@ const ActiveEmergencyScreen: React.FC = () => {
 
   const [pulseAnim] = useState(new Animated.Value(1));
 
+  // Support both flat DB response (latitude/longitude) and nested location object
+  const lat = activeRequest?.location?.latitude ?? activeRequest?.latitude;
+  const lng = activeRequest?.location?.longitude ?? activeRequest?.longitude;
+
   useEffect(() => {
-    // Refresh request data every 5 seconds
     const interval = setInterval(() => {
       refreshActiveRequest();
     }, 5000);
 
-    // Pulse animation for waiting state
     if (activeRequest?.status === 'pending') {
       Animated.loop(
         Animated.sequence([
@@ -55,7 +57,7 @@ const ActiveEmergencyScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [activeRequest?.status]);
 
-  if (!activeRequest) {
+  if (!activeRequest || lat == null || lng == null) {
     return (
       <View style={styles.container}>
         <Text>No active emergency request</Text>
@@ -97,7 +99,6 @@ const ActiveEmergencyScreen: React.FC = () => {
             try {
               await resolveEmergencyRequest(activeRequest.id);
               navigation.goBack();
-              // TODO: Show rating screen
             } catch (error) {
               Alert.alert(t('common.error'), 'Failed to resolve request');
             }
@@ -114,7 +115,6 @@ const ActiveEmergencyScreen: React.FC = () => {
   };
 
   const handleMessageHelper = () => {
-    // TODO: Open in-app chat
     Alert.alert('Coming Soon', 'In-app messaging will be available soon');
   };
 
@@ -147,6 +147,8 @@ const ActiveEmergencyScreen: React.FC = () => {
     }
   };
 
+  const helpersNotifiedCount = activeRequest.helpersNotified?.length ?? 0;
+
   return (
     <View style={styles.container}>
       {/* Map */}
@@ -154,18 +156,15 @@ const ActiveEmergencyScreen: React.FC = () => {
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
-          latitude: activeRequest.location.latitude,
-          longitude: activeRequest.location.longitude,
+          latitude: lat,
+          longitude: lng,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         }}
       >
         {/* User Location Marker */}
         <Marker
-          coordinate={{
-            latitude: activeRequest.location.latitude,
-            longitude: activeRequest.location.longitude,
-          }}
+          coordinate={{ latitude: lat, longitude: lng }}
           title="Your Location"
         >
           <View style={styles.userMarker}>
@@ -177,8 +176,8 @@ const ActiveEmergencyScreen: React.FC = () => {
         {activeRequest.acceptedHelperInfo && (
           <Marker
             coordinate={{
-              latitude: activeRequest.location.latitude + 0.002, // Mock helper location
-              longitude: activeRequest.location.longitude + 0.002,
+              latitude: lat + 0.002,
+              longitude: lng + 0.002,
             }}
             title="Helper"
           >
@@ -192,10 +191,10 @@ const ActiveEmergencyScreen: React.FC = () => {
       {/* Status Banner */}
       <View style={[styles.statusBanner, { backgroundColor: getStatusColor() }]}>
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <Icon 
-            name={activeRequest.status === 'pending' ? 'clock-outline' : 'check-circle'} 
-            size={24} 
-            color="#FFFFFF" 
+          <Icon
+            name={activeRequest.status === 'pending' ? 'clock-outline' : 'check-circle'}
+            size={24}
+            color="#FFFFFF"
           />
         </Animated.View>
         <Text style={styles.statusText}>{getStatusText()}</Text>
@@ -218,12 +217,14 @@ const ActiveEmergencyScreen: React.FC = () => {
                   {activeRequest.acceptedHelperInfo.trainingLevel}
                 </Text>
               </View>
-              <View style={styles.ratingContainer}>
-                <Icon name="star" size={16} color="#F59E0B" />
-                <Text style={styles.ratingText}>
-                  {activeRequest.acceptedHelperInfo.rating.toFixed(1)}
-                </Text>
-              </View>
+              {activeRequest.acceptedHelperInfo.rating != null && (
+                <View style={styles.ratingContainer}>
+                  <Icon name="star" size={16} color="#F59E0B" />
+                  <Text style={styles.ratingText}>
+                    {activeRequest.acceptedHelperInfo.rating.toFixed(1)}
+                  </Text>
+                </View>
+              )}
             </View>
             {activeRequest.acceptedHelperInfo.eta && (
               <View style={styles.etaContainer}>
@@ -235,7 +236,6 @@ const ActiveEmergencyScreen: React.FC = () => {
             )}
           </View>
 
-          {/* Action Buttons */}
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={[styles.actionButton, styles.callButton]}
@@ -263,9 +263,11 @@ const ActiveEmergencyScreen: React.FC = () => {
             <Icon name="account-search" size={48} color="#F59E0B" />
           </Animated.View>
           <Text style={styles.waitingTitle}>{t('emergency.searching')}</Text>
-          <Text style={styles.waitingText}>
-            {activeRequest.helpersNotified.length} {t('emergency.helpersNotified')}
-          </Text>
+          {helpersNotifiedCount > 0 && (
+            <Text style={styles.waitingText}>
+              {helpersNotifiedCount} {t('emergency.helpersNotified')}
+            </Text>
+          )}
         </View>
       )}
 
