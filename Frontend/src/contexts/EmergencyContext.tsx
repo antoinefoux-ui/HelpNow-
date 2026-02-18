@@ -61,13 +61,18 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   ) => {
     if (!user) throw new Error('User not authenticated');
 
+    // Build name safely from whatever fields are available on the user object
+    const firstName = user.firstName || user.first_name || '';
+    const lastName = user.lastName || user.last_name || '';
+    const fullName = [firstName, lastName].filter(Boolean).join(' ') || user.name || user.email || 'Unknown';
+
     try {
       const request = await emergencyService.createRequest({
         seekerId: user.id,
         seekerInfo: {
-          name: `${user.firstName} ${user.lastName}`,
-          photo: user.profilePhoto,
-          phone: user.phone,
+          name: fullName,
+          photo: user.profilePhoto || user.profile_photo || user.avatar || null,
+          phone: user.phone || user.phoneNumber || user.phone_number || null,
         },
         type,
         location,
