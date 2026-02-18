@@ -121,7 +121,7 @@ const HelperModeScreen: React.FC = () => {
   const stats = {
     totalHelps: user?.totalHelps || 0,
     avgResponseTime: user?.helperProfile?.responseTime || 0,
-    rating: user?.rating || 0,
+    rating: Number(user?.rating) || 0,
     successfulHelps: user?.helperProfile?.successfulHelps || 0,
   };
 
@@ -227,7 +227,7 @@ const HelperModeScreen: React.FC = () => {
             <View style={[styles.statIconContainer, { backgroundColor: '#FEE2E2' }]}>
               <Icon name="star" size={24} color="#EF4444" />
             </View>
-            <Text style={styles.statValue}>{stats.rating.toFixed(1)}</Text>
+            <Text style={styles.statValue}>{(stats.rating || 0).toFixed(1)}</Text>
             <Text style={styles.statLabel}>{t('helper.rating')}</Text>
           </View>
 
