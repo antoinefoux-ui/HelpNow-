@@ -13,10 +13,10 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 
 import { useEmergency } from '../../contexts/EmergencyContext';
-import { RootStackParamList, EmergencyType, Location } from '../../types';
+import { RootStackParamList, EmergencyType, Location as LocationType } from '../../types';
 
 type EmergencyRequestNavigationProp = StackNavigationProp<RootStackParamList, 'EmergencyRequest'>;
 
@@ -28,48 +28,13 @@ interface EmergencyOption {
 }
 
 const emergencyOptions: EmergencyOption[] = [
-  {
-    type: 'heart_attack',
-    icon: 'heart-pulse',
-    color: '#DC2626',
-    labelKey: 'emergency.heartAttack',
-  },
-  {
-    type: 'accident',
-    icon: 'car-crash',
-    color: '#EA580C',
-    labelKey: 'emergency.accident',
-  },
-  {
-    type: 'fall',
-    icon: 'human-handsdown',
-    color: '#D97706',
-    labelKey: 'emergency.fall',
-  },
-  {
-    type: 'breathing_difficulty',
-    icon: 'lungs',
-    color: '#2563EB',
-    labelKey: 'emergency.breathing',
-  },
-  {
-    type: 'loss_consciousness',
-    icon: 'head-alert',
-    color: '#7C3AED',
-    labelKey: 'emergency.unconscious',
-  },
-  {
-    type: 'allergic_reaction',
-    icon: 'allergy',
-    color: '#DB2777',
-    labelKey: 'emergency.allergic',
-  },
-  {
-    type: 'other',
-    icon: 'alert-circle',
-    color: '#6B7280',
-    labelKey: 'emergency.other',
-  },
+  { type: 'heart_attack', icon: 'heart-pulse', color: '#DC2626', labelKey: 'emergency.heartAttack' },
+  { type: 'accident', icon: 'car-crash', color: '#EA580C', labelKey: 'emergency.accident' },
+  { type: 'fall', icon: 'human-handsdown', color: '#D97706', labelKey: 'emergency.fall' },
+  { type: 'breathing_difficulty', icon: 'lungs', color: '#2563EB', labelKey: 'emergency.breathing' },
+  { type: 'loss_consciousness', icon: 'head-alert', color: '#7C3AED', labelKey: 'emergency.unconscious' },
+  { type: 'allergic_reaction', icon: 'allergy', color: '#DB2777', labelKey: 'emergency.allergic' },
+  { type: 'other', icon: 'alert-circle', color: '#6B7280', labelKey: 'emergency.other' },
 ];
 
 const EmergencyRequestScreen: React.FC = () => {
@@ -92,11 +57,7 @@ const EmergencyRequestScreen: React.FC = () => {
       'This will notify nearby helpers. Always call 112/911 first for professional help.',
       [
         { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('emergency.sendRequest'),
-          style: 'destructive',
-          onPress: sendRequest,
-        },
+        { text: t('emergency.sendRequest'), style: 'destructive', onPress: sendRequest },
       ]
     );
   };
@@ -105,36 +66,27 @@ const EmergencyRequestScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get current location
-      const position = await new Promise<Geolocation.GeoPosition>((resolve, reject) => {
-        Geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 10000,
-          }
-        );
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('common.error'), 'Location permission is required to send an emergency request.');
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
       });
 
-      const location: Location = {
+      const location: LocationType = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
       };
 
-      // Create emergency request
       await createEmergencyRequest(selectedType!, location, description || undefined);
-
-      // Navigate to active emergency screen
       navigation.goBack();
     } catch (error: any) {
       console.error('Error creating emergency request:', error);
-      Alert.alert(
-        t('common.error'),
-        error.message || t('errors.requestFailed')
-      );
+      Alert.alert(t('common.error'), error.message || t('errors.requestFailed'));
     } finally {
       setLoading(false);
     }
@@ -178,12 +130,7 @@ const EmergencyRequestScreen: React.FC = () => {
               ]}
               onPress={() => setSelectedType(option.type)}
             >
-              <View
-                style={[
-                  styles.optionIconContainer,
-                  { backgroundColor: option.color + '20' },
-                ]}
-              >
+              <View style={[styles.optionIconContainer, { backgroundColor: option.color + '20' }]}>
                 <Icon name={option.icon} size={32} color={option.color} />
               </View>
               <Text style={styles.optionLabel}>{t(option.labelKey)}</Text>
@@ -198,9 +145,7 @@ const EmergencyRequestScreen: React.FC = () => {
 
         {/* Description Input */}
         <View style={styles.descriptionContainer}>
-          <Text style={styles.descriptionLabel}>
-            {t('emergency.addDescription')}
-          </Text>
+          <Text style={styles.descriptionLabel}>{t('emergency.addDescription')}</Text>
           <View style={styles.textAreaWrapper}>
             <TextInput
               style={styles.textArea}
@@ -236,10 +181,7 @@ const EmergencyRequestScreen: React.FC = () => {
       {/* Send Button */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!selectedType || loading) && styles.sendButtonDisabled,
-          ]}
+          style={[styles.sendButton, (!selectedType || loading) && styles.sendButtonDisabled]}
           onPress={handleSendRequest}
           disabled={!selectedType || loading}
         >
@@ -248,9 +190,7 @@ const EmergencyRequestScreen: React.FC = () => {
           ) : (
             <>
               <Icon name="send" size={24} color="#FFFFFF" />
-              <Text style={styles.sendButtonText}>
-                {t('emergency.sendRequest')}
-              </Text>
+              <Text style={styles.sendButtonText}>{t('emergency.sendRequest')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -260,10 +200,7 @@ const EmergencyRequestScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7FAFC',
-  },
+  container: { flex: 1, backgroundColor: '#F7FAFC' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -274,21 +211,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
-  closeButton: {
-    marginRight: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1A202C',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
+  closeButton: { marginRight: 16 },
+  title: { fontSize: 20, fontWeight: '600', color: '#1A202C' },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
   warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -297,19 +223,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 24,
   },
-  warningText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 14,
-    color: '#991B1B',
-    fontWeight: '600',
-  },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
+  warningText: { flex: 1, marginLeft: 12, fontSize: 14, color: '#991B1B', fontWeight: '600' },
+  optionsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24 },
   optionCard: {
     width: '48%',
     backgroundColor: '#FFFFFF',
@@ -320,10 +235,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     alignItems: 'center',
   },
-  optionCardSelected: {
-    borderColor: '#10B981',
-    backgroundColor: '#F0FDF4',
-  },
+  optionCardSelected: { borderColor: '#10B981', backgroundColor: '#F0FDF4' },
   optionIconContainer: {
     width: 60,
     height: 60,
@@ -332,26 +244,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  optionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A202C',
-    textAlign: 'center',
-  },
-  selectedIndicator: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  descriptionContainer: {
-    marginBottom: 20,
-  },
-  descriptionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A202C',
-    marginBottom: 12,
-  },
+  optionLabel: { fontSize: 14, fontWeight: '600', color: '#1A202C', textAlign: 'center' },
+  selectedIndicator: { position: 'absolute', top: 8, right: 8 },
+  descriptionContainer: { marginBottom: 20 },
+  descriptionLabel: { fontSize: 16, fontWeight: '600', color: '#1A202C', marginBottom: 12 },
   textAreaWrapper: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -359,18 +255,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     padding: 12,
   },
-  textArea: {
-    fontSize: 16,
-    color: '#1A202C',
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  charCount: {
-    fontSize: 12,
-    color: '#718096',
-    textAlign: 'right',
-    marginTop: 4,
-  },
+  textArea: { fontSize: 16, color: '#1A202C', minHeight: 100, textAlignVertical: 'top' },
+  charCount: { fontSize: 12, color: '#718096', textAlign: 'right', marginTop: 4 },
   voiceButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -383,12 +269,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     opacity: 0.5,
   },
-  voiceButtonText: {
-    fontSize: 16,
-    color: '#718096',
-    marginLeft: 12,
-    fontWeight: '600',
-  },
+  voiceButtonText: { fontSize: 16, color: '#718096', marginLeft: 12, fontWeight: '600' },
   locationInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -396,12 +277,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
   },
-  locationText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 13,
-    color: '#2C5282',
-  },
+  locationText: { flex: 1, marginLeft: 12, fontSize: 13, color: '#2C5282' },
   footer: {
     padding: 20,
     paddingBottom: 40,
@@ -417,15 +293,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sendButtonDisabled: {
-    backgroundColor: '#CBD5E0',
-  },
-  sendButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginLeft: 12,
-  },
+  sendButtonDisabled: { backgroundColor: '#CBD5E0' },
+  sendButtonText: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF', marginLeft: 12 },
 });
 
 export default EmergencyRequestScreen;
