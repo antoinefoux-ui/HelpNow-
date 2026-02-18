@@ -13,11 +13,11 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 
 import { emergencyService } from '../../services/emergencyService';
 import { useAuth } from '../../contexts/AuthContext';
-import { RootStackParamList, Location } from '../../types';
+import { RootStackParamList, Location as LocationType } from '../../types';
 
 type HelperResponseRouteProp = RouteProp<RootStackParamList, 'HelperResponse'>;
 type HelperResponseNavigationProp = StackNavigationProp<RootStackParamList, 'HelperResponse'>;
@@ -30,7 +30,7 @@ const HelperResponseScreen: React.FC = () => {
 
   const [request, setRequest] = useState<any>(null);
   const [accepted, setAccepted] = useState(false);
-  const [helperLocation, setHelperLocation] = useState<Location | null>(null);
+  const [helperLocation, setHelperLocation] = useState<LocationType | null>(null);
   const [eta, setEta] = useState<number>(0);
 
   useEffect(() => {
@@ -40,11 +40,9 @@ const HelperResponseScreen: React.FC = () => {
 
   useEffect(() => {
     if (accepted && helperLocation) {
-      // Update location every 10 seconds
       const interval = setInterval(() => {
         updateHelperLocation();
       }, 10000);
-
       return () => clearInterval(interval);
     }
   }, [accepted, helperLocation]);
@@ -59,61 +57,50 @@ const HelperResponseScreen: React.FC = () => {
     }
   };
 
-  const getCurrentLocation = () => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const location: Location = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-        };
-        setHelperLocation(location);
-        
-        if (request) {
-          // Calculate ETA
-          const distance = calculateDistance(location, request.location);
-          const calculatedEta = emergencyService.calculateETA(distance);
-          setEta(calculatedEta);
-        }
-      },
-      (error) => {
-        console.error('Location error:', error);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000,
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const location: LocationType = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      };
+      setHelperLocation(location);
+
+      if (request) {
+        const distance = calculateDistance(location, request.location);
+        const calculatedEta = emergencyService.calculateETA(distance);
+        setEta(calculatedEta);
       }
-    );
+    } catch (error) {
+      console.error('Location error:', error);
+    }
   };
 
-  const calculateDistance = (from: Location, to: Location): number => {
-    // Haversine formula for distance in meters
-    const R = 6371e3; // Earth's radius in meters
+  const calculateDistance = (from: LocationType, to: LocationType): number => {
+    const R = 6371e3;
     const φ1 = (from.latitude * Math.PI) / 180;
     const φ2 = (to.latitude * Math.PI) / 180;
     const Δφ = ((to.latitude - from.latitude) * Math.PI) / 180;
     const Δλ = ((to.longitude - from.longitude) * Math.PI) / 180;
-
     const a =
       Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
       Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
     return R * c;
   };
 
   const updateHelperLocation = async () => {
     if (!helperLocation || !user || !request) return;
-
     try {
-      getCurrentLocation(); // Refresh location
-      await emergencyService.updateHelperLocation(
-        request.id,
-        user.id,
-        helperLocation,
-        eta
-      );
+      await getCurrentLocation();
+      await emergencyService.updateHelperLocation(request.id, user.id, helperLocation, eta);
     } catch (error) {
       console.error('Failed to update location:', error);
     }
@@ -121,63 +108,42 @@ const HelperResponseScreen: React.FC = () => {
 
   const handleAccept = async () => {
     if (!user) return;
-
     try {
       await emergencyService.acceptRequest(request.id, user.id);
       setAccepted(true);
-      Alert.alert(
-        t('common.success'),
-        'Request accepted! Navigate to the location.',
-        [{ text: t('common.ok') }]
-      );
+      Alert.alert(t('common.success'), 'Request accepted! Navigate to the location.', [
+        { text: t('common.ok') },
+      ]);
     } catch (error) {
       Alert.alert(t('common.error'), 'Failed to accept request');
     }
   };
 
   const handleDecline = () => {
-    Alert.alert(
-      'Decline Request',
-      'Are you sure you want to decline this request?',
-      [
-        { text: t('common.no'), style: 'cancel' },
-        {
-          text: t('common.yes'),
-          onPress: () => navigation.goBack(),
-        },
-      ]
-    );
+    Alert.alert('Decline Request', 'Are you sure you want to decline this request?', [
+      { text: t('common.no'), style: 'cancel' },
+      { text: t('common.yes'), onPress: () => navigation.goBack() },
+    ]);
   };
 
   const handleNavigate = () => {
     if (!request) return;
-
     const destination = `${request.location.latitude},${request.location.longitude}`;
-    
     const url = Platform.select({
       ios: `maps:0,0?q=${destination}`,
       android: `geo:0,0?q=${destination}`,
     });
-
-    if (url) {
-      Linking.openURL(url);
-    }
+    if (url) Linking.openURL(url);
   };
 
   const handleMarkArrived = async () => {
     if (!user) return;
-
     try {
       await emergencyService.markHelperArrived(request.id, user.id);
       Alert.alert(
         t('common.success'),
         'Marked as arrived. Provide assistance to the person in need.',
-        [
-          {
-            text: t('common.ok'),
-            onPress: () => navigation.goBack(),
-          },
-        ]
+        [{ text: t('common.ok'), onPress: () => navigation.goBack() }]
       );
     } catch (error) {
       Alert.alert(t('common.error'), 'Failed to mark arrival');
@@ -216,7 +182,6 @@ const HelperResponseScreen: React.FC = () => {
         }}
         showsUserLocation
       >
-        {/* Emergency Location Marker */}
         <Marker
           coordinate={{
             latitude: request.location.latitude,
@@ -232,13 +197,11 @@ const HelperResponseScreen: React.FC = () => {
 
       {/* Emergency Info Card */}
       <View style={styles.infoCard}>
-        {/* Emergency Type Badge */}
         <View style={styles.typeBadge}>
           <Icon name="alert" size={20} color="#DC2626" />
           <Text style={styles.typeText}>{request.type.replace('_', ' ')}</Text>
         </View>
 
-        {/* Distance & ETA */}
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Icon name="map-marker-distance" size={24} color="#6B7280" />
@@ -252,7 +215,6 @@ const HelperResponseScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Seeker Info */}
         {accepted && (
           <View style={styles.seekerInfo}>
             <View style={styles.seekerAvatar}>
@@ -262,16 +224,12 @@ const HelperResponseScreen: React.FC = () => {
               <Text style={styles.seekerName}>{request.seekerInfo.name}</Text>
               <Text style={styles.seekerAddress}>{request.address}</Text>
             </View>
-            <TouchableOpacity
-              style={styles.callButton}
-              onPress={handleCallSeeker}
-            >
+            <TouchableOpacity style={styles.callButton} onPress={handleCallSeeker}>
               <Icon name="phone" size={24} color="#10B981" />
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Description */}
         {request.description && (
           <View style={styles.descriptionContainer}>
             <Text style={styles.descriptionLabel}>Description:</Text>
@@ -279,7 +237,6 @@ const HelperResponseScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Action Buttons */}
         {!accepted ? (
           <View style={styles.actionButtons}>
             <TouchableOpacity
@@ -289,7 +246,6 @@ const HelperResponseScreen: React.FC = () => {
               <Icon name="close" size={24} color="#FFFFFF" />
               <Text style={styles.actionButtonText}>{t('helper.decline')}</Text>
             </TouchableOpacity>
-
             <TouchableOpacity
               style={[styles.actionButton, styles.acceptButton]}
               onPress={handleAccept}
@@ -305,11 +261,8 @@ const HelperResponseScreen: React.FC = () => {
               onPress={handleNavigate}
             >
               <Icon name="navigation" size={24} color="#FFFFFF" />
-              <Text style={styles.navButtonText}>
-                {t('helper.navigateToLocation')}
-              </Text>
+              <Text style={styles.navButtonText}>{t('helper.navigateToLocation')}</Text>
             </TouchableOpacity>
-
             <TouchableOpacity
               style={[styles.navButton, styles.arrivedButton]}
               onPress={handleMarkArrived}
@@ -325,13 +278,8 @@ const HelperResponseScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7FAFC',
-  },
-  map: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#F7FAFC' },
+  map: { flex: 1 },
   emergencyMarker: {
     width: 60,
     height: 60,
@@ -368,32 +316,11 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 16,
   },
-  typeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#DC2626',
-    marginLeft: 8,
-    textTransform: 'capitalize',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-  },
-  stat: {
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1A202C',
-    marginTop: 4,
-  },
+  typeText: { fontSize: 14, fontWeight: '600', color: '#DC2626', marginLeft: 8, textTransform: 'capitalize' },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 20 },
+  stat: { alignItems: 'center' },
+  statLabel: { fontSize: 12, color: '#6B7280', marginTop: 4 },
+  statValue: { fontSize: 20, fontWeight: 'bold', color: '#1A202C', marginTop: 4 },
   seekerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -411,19 +338,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  seekerDetails: {
-    flex: 1,
-  },
-  seekerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A202C',
-    marginBottom: 4,
-  },
-  seekerAddress: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
+  seekerDetails: { flex: 1 },
+  seekerName: { fontSize: 16, fontWeight: '600', color: '#1A202C', marginBottom: 4 },
+  seekerAddress: { fontSize: 13, color: '#6B7280' },
   callButton: {
     width: 44,
     height: 44,
@@ -432,27 +349,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  descriptionContainer: {
-    backgroundColor: '#F9FAFB',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  descriptionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: '#1A202C',
-    lineHeight: 20,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  descriptionContainer: { backgroundColor: '#F9FAFB', padding: 12, borderRadius: 8, marginBottom: 16 },
+  descriptionLabel: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4 },
+  descriptionText: { fontSize: 14, color: '#1A202C', lineHeight: 20 },
+  actionButtons: { flexDirection: 'row', gap: 12 },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
@@ -461,21 +361,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
   },
-  declineButton: {
-    backgroundColor: '#EF4444',
-  },
-  acceptButton: {
-    backgroundColor: '#10B981',
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  navigationButtons: {
-    gap: 12,
-  },
+  declineButton: { backgroundColor: '#EF4444' },
+  acceptButton: { backgroundColor: '#10B981' },
+  actionButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
+  navigationButtons: { gap: 12 },
   navButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -483,18 +372,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
   },
-  navigateButton: {
-    backgroundColor: '#3B82F6',
-  },
-  arrivedButton: {
-    backgroundColor: '#10B981',
-  },
-  navButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
+  navigateButton: { backgroundColor: '#3B82F6' },
+  arrivedButton: { backgroundColor: '#10B981' },
+  navButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
 });
 
 export default HelperResponseScreen;
