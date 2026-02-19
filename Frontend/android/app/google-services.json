@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1068075261315",
+    "project_id": "helpnow-73e53",
+    "storage_bucket": "helpnow-73e53.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068075261315:android:34272668800946ca9feab6",
+        "android_client_info": {
+          "package_name": "com.helpnow.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1068075261315-5ettlnm5h1ur8kssjaboeg5dr9repkrl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3kVpzG8IIWM2c42la73Y2dRKbz-p79rA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1068075261315-5ettlnm5h1ur8kssjaboeg5dr9repkrl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
