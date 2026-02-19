@@ -57,12 +57,12 @@ const HelperModeScreen: React.FC = () => {
       setIsAvailable(value);
 
       // Update user profile
-await updateUser({
-  helperProfile: user.helperProfile ? {
-    ...user.helperProfile,
-    isAvailable: value,
-  } : undefined,
-});
+      await updateUser({
+        helperProfile: {
+          ...user.helperProfile,
+          isAvailable: value,
+        },
+      });
 
       // Update socket connection
       if (value) {
