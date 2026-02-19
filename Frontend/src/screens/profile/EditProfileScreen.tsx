@@ -19,43 +19,72 @@ import { RootStackParamList, User } from '../../types';
 
 type EditProfileNavigationProp = StackNavigationProp<RootStackParamList>;
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 const EditProfileScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<EditProfileNavigationProp>();
   const { user, updateUser } = useAuth();
 
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<Pick<User, 'firstName' | 'lastName' | 'email' | 'phone' | 'dateOfBirth' | 'gender'>>({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || user?.first_name || '',
+    lastName: user?.lastName || user?.last_name || '',
     email: user?.email || '',
-    phone: user?.phone || '',
-    dateOfBirth: user?.dateOfBirth || '',
+    phone: user?.phone || user?.phoneNumber || user?.phone_number || '',
+    dateOfBirth: user?.dateOfBirth || user?.date_of_birth || '',
     gender: user?.gender || 'prefer_not_to_say',
   });
 
+  const validate = (): string | null => {
+    if (!formData.firstName.trim()) return 'First name is required';
+    if (!formData.lastName.trim()) return 'Last name is required';
+    if (formData.dateOfBirth && !DATE_REGEX.test(formData.dateOfBirth)) {
+      return 'Date of birth must be in YYYY-MM-DD format (e.g. 1990-05-21)';
+    }
+    return null;
+  };
+
   const handleSave = async () => {
+    const validationError = validate();
+    if (validationError) {
+      Alert.alert('Invalid Input', validationError);
+      return;
+    }
+
+    // Only include optional fields if they have values
+    const payload: Record<string, any> = {
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      email: formData.email.trim(),
+      gender: formData.gender,
+    };
+
+    if (formData.phone.trim()) payload.phone = formData.phone.trim();
+    if (formData.dateOfBirth.trim()) payload.dateOfBirth = formData.dateOfBirth.trim();
+
     try {
       setLoading(true);
-      await updateUser(formData);
+      await updateUser(payload);
       Alert.alert(
         t('common.success'),
-        t('success.profileUpdated'),
-        [
-          {
-            text: t('common.ok'),
-            onPress: () => navigation.goBack(),
-          },
-        ]
+        t('success.profileUpdated') || 'Profile updated successfully',
+        [{ text: t('common.ok'), onPress: () => navigation.goBack() }]
       );
-    } catch (error) {
-      Alert.alert(t('common.error'), 'Failed to update profile');
+    } catch (error: any) {
+      const details = error?.response?.data?.details;
+      if (details && Array.isArray(details)) {
+        const messages = details.map((d: any) => d.message).join('\n');
+        Alert.alert('Validation Error', messages);
+      } else {
+        Alert.alert(t('common.error'), 'Failed to update profile');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const updateField = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
+  const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -96,7 +125,9 @@ const EditProfileScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>{t('profile.personalInfo')}</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('auth.firstName')}</Text>
+            <Text style={styles.label}>
+              {t('auth.firstName')} <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
               style={styles.input}
               value={formData.firstName}
@@ -106,7 +137,9 @@ const EditProfileScreen: React.FC = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('auth.lastName')}</Text>
+            <Text style={styles.label}>
+              {t('auth.lastName')} <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
               style={styles.input}
               value={formData.lastName}
@@ -139,12 +172,17 @@ const EditProfileScreen: React.FC = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('profile.dateOfBirth')}</Text>
+            <Text style={styles.label}>
+              {t('profile.dateOfBirth')}{' '}
+              <Text style={styles.hint}>(YYYY-MM-DD)</Text>
+            </Text>
             <TextInput
               style={styles.input}
               value={formData.dateOfBirth}
               onChangeText={(value) => updateField('dateOfBirth', value)}
-              placeholder="YYYY-MM-DD"
+              placeholder="1990-05-21"
+              keyboardType="numbers-and-punctuation"
+              maxLength={10}
             />
           </View>
 
@@ -311,6 +349,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4B5563',
     marginBottom: 8,
+  },
+  required: {
+    color: '#E53E3E',
+  },
+  hint: {
+    color: '#9CA3AF',
+    fontWeight: '400',
+    fontSize: 12,
   },
   input: {
     backgroundColor: '#F9FAFB',
