@@ -5,6 +5,18 @@ import { redisClient } from '../config/redis';
 type RequestWithUser = Request & { user?: { userId?: string } };
 
 class UserController {
+  constructor() {
+    this.getUserById = this.getUserById.bind(this);
+    this.updateUser = this.updateUser.bind(this);
+    this.deleteUser = this.deleteUser.bind(this);
+    this.uploadPhoto = this.uploadPhoto.bind(this);
+    this.addAddress = this.addAddress.bind(this);
+    this.updateAddress = this.updateAddress.bind(this);
+    this.deleteAddress = this.deleteAddress.bind(this);
+    this.addEmergencyContact = this.addEmergencyContact.bind(this);
+    this.deleteEmergencyContact = this.deleteEmergencyContact.bind(this);
+  }
+
   private getRequesterId(req: Request): string | undefined {
     return (req as RequestWithUser).user?.userId;
   }
@@ -31,6 +43,7 @@ class UserController {
 
     return requesterId;
   }
+
   /**
    * Get user by ID
    */
