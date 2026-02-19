@@ -57,10 +57,22 @@ const ActiveEmergencyScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [activeRequest?.status]);
 
-  if (!activeRequest || lat == null || lng == null) {
+  if (!activeRequest) {
     return (
       <View style={styles.container}>
         <Text>No active emergency request</Text>
+      </View>
+    );
+  }
+
+  if (lat == null || lng == null) {
+    // Log what we actually received to diagnose field names
+    console.log('🗺️ activeRequest fields:', JSON.stringify(activeRequest));
+    return (
+      <View style={styles.container}>
+        <Text style={{ padding: 20 }}>
+          Location unavailable. Fields: {Object.keys(activeRequest).join(', ')}
+        </Text>
       </View>
     );
   }
@@ -157,7 +169,7 @@ const ActiveEmergencyScreen: React.FC = () => {
         <Icon name="map-outline" size={48} color="#9CA3AF" />
         <Text style={styles.mapPlaceholderTitle}>Map unavailable</Text>
         <Text style={styles.mapPlaceholderCoords}>
-          📍 {lat.toFixed(5)}, {lng.toFixed(5)}
+          📍 {Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}
         </Text>
         <Text style={styles.mapPlaceholderNote}>Google Maps API activating</Text>
       </View>
