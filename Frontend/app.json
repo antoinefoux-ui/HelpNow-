@@ -41,7 +41,7 @@
         "RECORD_AUDIO",
         "VIBRATE",
         "RECEIVE_BOOT_COMPLETED"
-      ]
+      ],
      "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDII191IAll1JwMK6vJp6VAK45wyxcjP-4"
