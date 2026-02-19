@@ -12,7 +12,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+// import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Temporarily disabled - awaiting Maps API activation
 
 import { useEmergency } from '../../contexts/EmergencyContext';
 import { RootStackParamList } from '../../types';
@@ -152,41 +152,15 @@ const ActiveEmergencyScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Map */}
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        initialRegion={{
-          latitude: lat,
-          longitude: lng,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
-      >
-        {/* User Location Marker */}
-        <Marker
-          coordinate={{ latitude: lat, longitude: lng }}
-          title="Your Location"
-        >
-          <View style={styles.userMarker}>
-            <Icon name="account" size={24} color="#FFFFFF" />
-          </View>
-        </Marker>
-
-        {/* Helper Location Marker (if helper accepted) */}
-        {activeRequest.acceptedHelperInfo && (
-          <Marker
-            coordinate={{
-              latitude: lat + 0.002,
-              longitude: lng + 0.002,
-            }}
-            title="Helper"
-          >
-            <View style={styles.helperMarker}>
-              <Icon name="account-heart" size={24} color="#FFFFFF" />
-            </View>
-          </Marker>
-        )}
-      </MapView>
+      {/* Map Placeholder - restore MapView once Google Maps API is active */}
+      <View style={styles.mapPlaceholder}>
+        <Icon name="map-outline" size={48} color="#9CA3AF" />
+        <Text style={styles.mapPlaceholderTitle}>Map unavailable</Text>
+        <Text style={styles.mapPlaceholderCoords}>
+          📍 {lat.toFixed(5)}, {lng.toFixed(5)}
+        </Text>
+        <Text style={styles.mapPlaceholderNote}>Google Maps API activating</Text>
+      </View>
 
       {/* Status Banner */}
       <View style={[styles.statusBanner, { backgroundColor: getStatusColor() }]}>
@@ -302,6 +276,28 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  mapPlaceholder: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mapPlaceholderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 8,
+  },
+  mapPlaceholderCoords: {
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'monospace',
+  },
+  mapPlaceholderNote: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
   userMarker: {
     width: 50,
