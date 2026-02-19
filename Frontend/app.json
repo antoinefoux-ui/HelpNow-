@@ -42,6 +42,11 @@
         "VIBRATE",
         "RECEIVE_BOOT_COMPLETED"
       ]
+     "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyB_93mRe-WPgQ9vWo3V1TIbky_29OP_r7A"
+        }
+      }
     }
   }
 }
