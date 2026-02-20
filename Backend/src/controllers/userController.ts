@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { pool } from '../config/database';
-import { redisClient } from '../config/redis';
+import { safeRedis } from '../config/redis';
 
 type RequestWithUser = Request & { user?: { userId?: string } };
 
@@ -26,18 +26,12 @@ class UserController {
     const { id } = req.params;
 
     if (!requesterId) {
-      res.status(401).json({
-        success: false,
-        error: 'Authentication required',
-      });
+      res.status(401).json({ success: false, error: 'Authentication required' });
       return null;
     }
 
     if (requesterId !== id) {
-      res.status(403).json({
-        success: false,
-        error: 'Not authorized to access this user resource',
-      });
+      res.status(403).json({ success: false, error: 'Not authorized to access this user resource' });
       return null;
     }
 
@@ -50,44 +44,29 @@ class UserController {
   async getUserById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      if (!this.ensureOwner(req, res)) {
+      if (!this.ensureOwner(req, res)) return;
+
+      const cached = await safeRedis.get(`user:${id}`);
+      if (cached) {
+        res.json({ success: true, data: JSON.parse(cached) });
         return;
       }
 
-      // Try cache first (Redis optional)
-      try {
-        const cached = await redisClient.get(`user:${id}`);
-        if (cached) {
-          res.json({
-            success: true,
-            data: JSON.parse(cached),
-          });
-          return;
-        }
-      } catch (e) {
-        // Redis down, continue without cache
-      }
-
-      // Get user from database
       const userResult = await pool.query(
         `SELECT id, email, phone, first_name, last_name, profile_photo,
-                date_of_birth, gender, is_helper, is_active, rating, 
+                date_of_birth, gender, is_helper, is_active, rating,
                 total_helps, verified, language, created_at
          FROM users WHERE id = $1`,
         [id]
       );
 
       if (userResult.rows.length === 0) {
-        res.status(404).json({
-          success: false,
-          error: 'User not found',
-        });
+        res.status(404).json({ success: false, error: 'User not found' });
         return;
       }
 
       const user = userResult.rows[0];
 
-      // Get helper profile if exists
       if (user.is_helper) {
         const helperResult = await pool.query(
           `SELECT * FROM helper_profiles WHERE user_id = $1`,
@@ -98,7 +77,6 @@ class UserController {
         }
       }
 
-      // Get addresses
       const addressResult = await pool.query(
         `SELECT id, label, street, city, state, zip_code, country,
                 apartment_number, building_code, floor_number,
@@ -110,14 +88,12 @@ class UserController {
       );
       user.addresses = addressResult.rows;
 
-      // Get emergency contacts
       const contactsResult = await pool.query(
         `SELECT * FROM emergency_contacts WHERE user_id = $1`,
         [id]
       );
       user.emergencyContacts = contactsResult.rows;
 
-      // Get medical info
       const medicalResult = await pool.query(
         `SELECT * FROM medical_info WHERE user_id = $1`,
         [id]
@@ -126,33 +102,25 @@ class UserController {
         user.medicalInfo = medicalResult.rows[0];
       }
 
-      // Cache the result (Redis optional)
-      try {
-        await redisClient.setEx(`user:${id}`, 300, JSON.stringify(user));
-      } catch (e) {
-        // Redis down, continue without cache
-      }
+      await safeRedis.setEx(`user:${id}`, 300, JSON.stringify(user));
 
-      res.json({
-        success: true,
-        data: user,
-      });
+      res.json({ success: true, data: user });
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Update user profile - ENHANCED with helperProfile support
+   * Update user profile
+   * Accepts: firstName, lastName, dateOfBirth, gender, language, isHelper, helperProfile
+   * helperProfile fields accepted in both camelCase and snake_case
    */
   async updateUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     const client = await pool.connect();
 
     try {
       const { id } = req.params;
-      if (!this.ensureOwner(req, res)) {
-        return;
-      }
+      if (!this.ensureOwner(req, res)) return;
 
       const {
         firstName,
@@ -160,119 +128,80 @@ class UserController {
         dateOfBirth,
         gender,
         language,
+        isHelper,
         helperProfile,
       } = req.body;
 
       await client.query('BEGIN');
 
-      // Build update query dynamically for users table
+      // Build users table update
       const updates: string[] = [];
       const values: any[] = [];
       let valueIndex = 1;
 
-      if (firstName) {
-        updates.push(`first_name = $${valueIndex++}`);
-        values.push(firstName);
-      }
-      if (lastName) {
-        updates.push(`last_name = $${valueIndex++}`);
-        values.push(lastName);
-      }
-      if (dateOfBirth) {
-        updates.push(`date_of_birth = $${valueIndex++}`);
-        values.push(dateOfBirth);
-      }
-      if (gender) {
-        updates.push(`gender = $${valueIndex++}`);
-        values.push(gender);
-      }
-      if (language) {
-        updates.push(`language = $${valueIndex++}`);
-        values.push(language);
-      }
+      if (firstName !== undefined) { updates.push(`first_name = $${valueIndex++}`); values.push(firstName); }
+      if (lastName !== undefined)  { updates.push(`last_name = $${valueIndex++}`);  values.push(lastName); }
+      if (dateOfBirth !== undefined){ updates.push(`date_of_birth = $${valueIndex++}`); values.push(dateOfBirth); }
+      if (gender !== undefined)    { updates.push(`gender = $${valueIndex++}`);      values.push(gender); }
+      if (language !== undefined)  { updates.push(`language = $${valueIndex++}`);    values.push(language); }
+      // FIX: accept isHelper field
+      if (isHelper !== undefined)  { updates.push(`is_helper = $${valueIndex++}`);   values.push(isHelper); }
 
-      // Update users table if there are changes
       let userResult;
       if (updates.length > 0) {
         updates.push(`updated_at = NOW()`);
         values.push(id);
-
-        const query = `
-          UPDATE users 
-          SET ${updates.join(', ')}
-          WHERE id = $${valueIndex}
-          RETURNING *
-        `;
-
-        userResult = await client.query(query, values);
-      } else {
-        // Just fetch the user if no basic fields changed
         userResult = await client.query(
-          `SELECT * FROM users WHERE id = $1`,
-          [id]
+          `UPDATE users SET ${updates.join(', ')} WHERE id = $${valueIndex} RETURNING *`,
+          values
         );
+      } else {
+        userResult = await client.query(`SELECT * FROM users WHERE id = $1`, [id]);
       }
 
-      // Update helper profile if provided
+      // Update helper_profiles if helperProfile provided
+      // FIX: handle both camelCase and snake_case from frontend
       if (helperProfile) {
         const helperUpdates: string[] = [];
         const helperValues: any[] = [];
         let helperIndex = 1;
 
-        if (helperProfile.isAvailable !== undefined) {
-          helperUpdates.push(`is_available = $${helperIndex++}`);
-          helperValues.push(helperProfile.isAvailable);
-        }
-        if (helperProfile.responseRadius !== undefined) {
-          helperUpdates.push(`response_radius = $${helperIndex++}`);
-          helperValues.push(helperProfile.responseRadius);
-        }
-        if (helperProfile.trainingLevel !== undefined) {
-          helperUpdates.push(`training_level = $${helperIndex++}`);
-          helperValues.push(helperProfile.trainingLevel);
-        }
-        if (helperProfile.verificationStatus !== undefined) {
-          helperUpdates.push(`verification_status = $${helperIndex++}`);
-          helperValues.push(helperProfile.verificationStatus);
-        }
+        const isAvailable = helperProfile.isAvailable ?? helperProfile.is_available;
+        const responseRadius = helperProfile.responseRadius ?? helperProfile.response_radius;
+        const trainingLevel = helperProfile.trainingLevel ?? helperProfile.training_level;
+        const verificationStatus = helperProfile.verificationStatus ?? helperProfile.verification_status;
+        const languagesSpoken = helperProfile.languagesSpoken ?? helperProfile.languages_spoken;
+        const situationsWillingToHelp = helperProfile.situationsWillingToHelp ?? helperProfile.situations_willing_to_help;
+
+        if (isAvailable !== undefined)          { helperUpdates.push(`is_available = $${helperIndex++}`);           helperValues.push(isAvailable); }
+        if (responseRadius !== undefined)        { helperUpdates.push(`response_radius = $${helperIndex++}`);        helperValues.push(responseRadius); }
+        if (trainingLevel !== undefined)         { helperUpdates.push(`training_level = $${helperIndex++}`);         helperValues.push(trainingLevel); }
+        if (verificationStatus !== undefined)    { helperUpdates.push(`verification_status = $${helperIndex++}`);    helperValues.push(verificationStatus); }
+        if (languagesSpoken !== undefined)       { helperUpdates.push(`languages_spoken = $${helperIndex++}`);       helperValues.push(languagesSpoken); }
+        if (situationsWillingToHelp !== undefined){ helperUpdates.push(`situations_willing_to_help = $${helperIndex++}`); helperValues.push(situationsWillingToHelp); }
 
         if (helperUpdates.length > 0) {
           helperUpdates.push(`updated_at = NOW()`);
           helperValues.push(id);
-
-          const helperQuery = `
-            UPDATE helper_profiles 
-            SET ${helperUpdates.join(', ')}
-            WHERE user_id = $${helperIndex}
-            RETURNING *
-          `;
-
-          await client.query(helperQuery, helperValues);
+          await client.query(
+            `UPDATE helper_profiles SET ${helperUpdates.join(', ')} WHERE user_id = $${helperIndex} RETURNING *`,
+            helperValues
+          );
         }
       }
 
-      // Check if there were any updates
-      if (updates.length === 0 && !helperProfile) {
+      // Return 400 only if truly nothing was provided
+      if (updates.length === 0 && !helperProfile && isHelper === undefined) {
         await client.query('ROLLBACK');
-        res.status(400).json({
-          success: false,
-          error: 'No fields to update',
-        });
+        res.status(400).json({ success: false, error: 'No fields to update' });
         return;
       }
 
       await client.query('COMMIT');
 
-      // Invalidate cache (Redis optional)
-      try {
-        await redisClient.del(`user:${id}`);
-      } catch (e) {
-        // Redis down, continue
-      }
+      await safeRedis.del(`user:${id}`);
 
-      // Return updated user with helper profile
       const finalUser = userResult.rows[0];
-      
       if (finalUser.is_helper) {
         const helperResult = await pool.query(
           `SELECT * FROM helper_profiles WHERE user_id = $1`,
@@ -283,10 +212,7 @@ class UserController {
         }
       }
 
-      res.json({
-        success: true,
-        data: finalUser,
-      });
+      res.json({ success: true, data: finalUser });
     } catch (error) {
       await client.query('ROLLBACK');
       next(error);
@@ -295,7 +221,6 @@ class UserController {
     }
   }
 
-  // ... rest of the methods remain the same ...
   async deleteUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     const client = await pool.connect();
     try {
@@ -304,7 +229,8 @@ class UserController {
       await client.query('BEGIN');
       await client.query(`UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1`, [id]);
       await client.query('COMMIT');
-      try { await redisClient.del(`user:${id}`); await redisClient.del(`refresh_token:${id}`); } catch (e) {}
+      await safeRedis.del(`user:${id}`);
+      await safeRedis.del(`refresh_token:${id}`);
       res.json({ success: true, message: 'Account deleted successfully' });
     } catch (error) {
       await client.query('ROLLBACK');
@@ -324,7 +250,7 @@ class UserController {
       }
       const photoUrl = `https://storage.helpnow.com/users/${id}/profile-${Date.now()}.jpg`;
       await pool.query(`UPDATE users SET profile_photo = $1, updated_at = NOW() WHERE id = $2`, [photoUrl, id]);
-      try { await redisClient.del(`user:${id}`); } catch (e) {}
+      await safeRedis.del(`user:${id}`);
       res.json({ success: true, data: { photoUrl } });
     } catch (error) {
       next(error);
@@ -345,7 +271,7 @@ class UserController {
         [id, label, street, city, state, zipCode, country, apartmentNumber, buildingCode, floorNumber, arrivalInstructions, longitude, latitude, isPrimary || false]
       );
       await client.query('COMMIT');
-      try { await redisClient.del(`user:${id}`); } catch (e) {}
+      await safeRedis.del(`user:${id}`);
       res.status(201).json({ success: true, data: result.rows[0] });
     } catch (error) {
       await client.query('ROLLBACK');
@@ -376,7 +302,7 @@ class UserController {
       values.push(addressId, id);
       const query = `UPDATE addresses SET ${updateFields.join(', ')}, updated_at = NOW() WHERE id = $${valueIndex - 1} AND user_id = $${valueIndex} RETURNING *`;
       const result = await pool.query(query, values);
-      try { await redisClient.del(`user:${id}`); } catch (e) {}
+      await safeRedis.del(`user:${id}`);
       res.json({ success: true, data: result.rows[0] });
     } catch (error) {
       next(error);
@@ -388,7 +314,7 @@ class UserController {
       const { id, addressId } = req.params;
       if (!this.ensureOwner(req, res)) return;
       await pool.query(`DELETE FROM addresses WHERE id = $1 AND user_id = $2`, [addressId, id]);
-      try { await redisClient.del(`user:${id}`); } catch (e) {}
+      await safeRedis.del(`user:${id}`);
       res.json({ success: true, message: 'Address deleted' });
     } catch (error) {
       next(error);
@@ -404,7 +330,7 @@ class UserController {
         `INSERT INTO emergency_contacts (user_id, name, phone, relationship) VALUES ($1, $2, $3, $4) RETURNING *`,
         [id, name, phone, relationship]
       );
-      try { await redisClient.del(`user:${id}`); } catch (e) {}
+      await safeRedis.del(`user:${id}`);
       res.status(201).json({ success: true, data: result.rows[0] });
     } catch (error) {
       next(error);
@@ -416,7 +342,7 @@ class UserController {
       const { id, contactId } = req.params;
       if (!this.ensureOwner(req, res)) return;
       await pool.query(`DELETE FROM emergency_contacts WHERE id = $1 AND user_id = $2`, [contactId, id]);
-      try { await redisClient.del(`user:${id}`); } catch (e) {}
+      await safeRedis.del(`user:${id}`);
       res.json({ success: true, message: 'Emergency contact deleted' });
     } catch (error) {
       next(error);
