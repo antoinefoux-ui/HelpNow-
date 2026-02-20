@@ -24,6 +24,7 @@ router.post('/', emergencyController.createEmergency);
  * @route   GET /api/v1/emergencies/active/:userId
  * @desc    Get active emergency for user
  * @access  Private
+ * NOTE: Static routes (/active, /nearby, /history) MUST come before /:id
  */
 router.get('/active/:userId', emergencyController.getActiveEmergency);
 
@@ -40,6 +41,14 @@ router.get('/nearby', emergencyController.getNearbyEmergencies);
  * @access  Private
  */
 router.get('/history/:userId', emergencyController.getEmergencyHistory);
+
+/**
+ * @route   GET /api/v1/emergencies/:id
+ * @desc    Get emergency request by ID
+ * @access  Private
+ * NOTE: This must come AFTER all static GET routes above
+ */
+router.get('/:id', emergencyController.getEmergency);
 
 /**
  * @route   POST /api/v1/emergencies/:id/accept
