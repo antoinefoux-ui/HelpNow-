@@ -9,7 +9,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
 import { authService } from '../services/authService';
-import { onTokenExpired } from './apiClient'; // ← event bus from apiClient
+import { onTokenExpired } from '../config/axios'; // ← event bus from config/axios
 
 interface AuthContextType {
   user: User | null;
