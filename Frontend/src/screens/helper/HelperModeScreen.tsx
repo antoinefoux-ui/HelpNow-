@@ -55,7 +55,7 @@ const HelperModeScreen: React.FC = () => {
 
   useEffect(() => {
     if (user?.helperProfile) {
-      setIsAvailable(user.helperProfile.isAvailable);
+      setIsAvailable(user.helperProfile.isAvailable ?? false);
       setResponseRadius((user.helperProfile.responseRadius || 5000) / 1000);
     }
   }, [user]);
@@ -85,6 +85,8 @@ const HelperModeScreen: React.FC = () => {
       setLoading(true);
       setIsAvailable(value);
 
+      // FIX: Only update helperProfile fields — don't send isHelper/helperProfile
+      // to the /users endpoint which doesn't accept them (causes 400 "No fields to update")
       await updateUser({
         helperProfile: {
           ...user.helperProfile,
@@ -160,9 +162,10 @@ const HelperModeScreen: React.FC = () => {
         languagesSpoken: ['en'],
       });
 
-      // Update local user state with new helper profile
+      // FIX: Don't send isHelper/helperProfile to the /users endpoint.
+      // The /helpers/:id/setup endpoint already handles everything on the backend.
+      // We only update local state via updateUser with the returned helper profile data.
       await updateUser({
-        isHelper: true,
         helperProfile: response.data.data,
       });
 
@@ -321,8 +324,9 @@ const HelperModeScreen: React.FC = () => {
             <View style={styles.profileInfo}>
               <View style={styles.profileRow}>
                 <Text style={styles.profileLabel}>Training Level:</Text>
+                {/* FIX: Guard against undefined before calling .replace() */}
                 <Text style={styles.profileValue}>
-                  {user.helperProfile.trainingLevel.replace('_', ' ').toUpperCase()}
+                  {(user.helperProfile.trainingLevel ?? '').replace(/_/g, ' ').toUpperCase()}
                 </Text>
               </View>
 
@@ -334,11 +338,12 @@ const HelperModeScreen: React.FC = () => {
                     size={16}
                     color={user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B'}
                   />
+                  {/* FIX: Guard against undefined before calling .toUpperCase() */}
                   <Text style={[
                     styles.verificationText,
                     { color: user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B' }
                   ]}>
-                    {user.helperProfile.verificationStatus.toUpperCase()}
+                    {(user.helperProfile.verificationStatus ?? 'pending').toUpperCase()}
                   </Text>
                 </View>
               </View>
@@ -349,8 +354,9 @@ const HelperModeScreen: React.FC = () => {
                   <View style={styles.situationsList}>
                     {user.helperProfile.situationsWillingToHelp.map((situation, index) => (
                       <View key={index} style={styles.situationTag}>
+                        {/* FIX: Guard against undefined before calling .replace() */}
                         <Text style={styles.situationText}>
-                          {situation.replace('_', ' ')}
+                          {(situation ?? '').replace(/_/g, ' ')}
                         </Text>
                       </View>
                     ))}
@@ -361,7 +367,7 @@ const HelperModeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Setup Helper Profile Button — fixed: added onPress */}
+        {/* Setup Helper Profile Button */}
         {!user?.helperProfile && (
           <TouchableOpacity
             style={styles.setupCard}
