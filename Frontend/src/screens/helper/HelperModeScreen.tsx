@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  TextInput,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -14,14 +17,41 @@ import Slider from '@react-native-community/slider';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { socketService } from '../../services/socketService';
+import axios from 'axios';
+import { API_CONFIG } from '../../config/api';
+
+const API_URL = API_CONFIG.BASE_URL;
+
+const TRAINING_LEVELS = [
+  { value: 'basic', label: 'Basic First Aid' },
+  { value: 'intermediate', label: 'Intermediate (CPR Certified)' },
+  { value: 'advanced', label: 'Advanced (Medical Professional)' },
+];
+
+const SITUATION_OPTIONS = [
+  { value: 'heart_attack', label: 'Heart Attack' },
+  { value: 'accident', label: 'Accident' },
+  { value: 'fall', label: 'Fall' },
+  { value: 'breathing_difficulty', label: 'Breathing Difficulty' },
+  { value: 'loss_consciousness', label: 'Loss of Consciousness' },
+  { value: 'allergic_reaction', label: 'Allergic Reaction' },
+  { value: 'other', label: 'Other' },
+];
 
 const HelperModeScreen: React.FC = () => {
   const { t } = useTranslation();
   const { user, updateUser } = useAuth();
 
   const [isAvailable, setIsAvailable] = useState(false);
-  const [responseRadius, setResponseRadius] = useState(5); // in km
+  const [responseRadius, setResponseRadius] = useState(5);
   const [loading, setLoading] = useState(false);
+
+  // Setup modal state
+  const [setupModalVisible, setSetupModalVisible] = useState(false);
+  const [selectedTrainingLevel, setSelectedTrainingLevel] = useState('basic');
+  const [selectedSituations, setSelectedSituations] = useState<string[]>([]);
+  const [setupRadius, setSetupRadius] = useState(5);
+  const [setupLoading, setSetupLoading] = useState(false);
 
   useEffect(() => {
     if (user?.helperProfile) {
@@ -33,7 +63,6 @@ const HelperModeScreen: React.FC = () => {
   const handleToggleAvailability = async (value: boolean) => {
     if (!user) return;
 
-    // Check if helper profile is complete
     if (!user.helperProfile) {
       Alert.alert(
         'Setup Required',
@@ -56,7 +85,6 @@ const HelperModeScreen: React.FC = () => {
       setLoading(true);
       setIsAvailable(value);
 
-      // Update user profile
       await updateUser({
         helperProfile: {
           ...user.helperProfile,
@@ -64,7 +92,6 @@ const HelperModeScreen: React.FC = () => {
         },
       });
 
-      // Update socket connection
       if (value) {
         socketService.setHelperAvailability(user.id, true);
         Alert.alert(
@@ -77,7 +104,7 @@ const HelperModeScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to update availability:', error);
-      setIsAvailable(!value); // Revert on error
+      setIsAvailable(!value);
       Alert.alert(t('common.error'), 'Failed to update availability');
     } finally {
       setLoading(false);
@@ -92,7 +119,7 @@ const HelperModeScreen: React.FC = () => {
       await updateUser({
         helperProfile: {
           ...user.helperProfile!,
-          responseRadius: responseRadius * 1000, // Convert to meters
+          responseRadius: responseRadius * 1000,
         },
       });
 
@@ -109,15 +136,56 @@ const HelperModeScreen: React.FC = () => {
     }
   };
 
-  const getStatusColor = () => {
-    return isAvailable ? '#10B981' : '#6B7280';
+  const toggleSituation = (value: string) => {
+    setSelectedSituations(prev =>
+      prev.includes(value) ? prev.filter(s => s !== value) : [...prev, value]
+    );
   };
 
-  const getStatusText = () => {
-    return isAvailable ? t('helper.online') : t('helper.offline');
+  const handleSetupProfile = async () => {
+    if (!user) return;
+
+    if (selectedSituations.length === 0) {
+      Alert.alert('Required', 'Please select at least one situation you can help with.');
+      return;
+    }
+
+    try {
+      setSetupLoading(true);
+
+      const response = await axios.post(`${API_URL}/helpers/${user.id}/setup`, {
+        trainingLevel: selectedTrainingLevel,
+        situationsWillingToHelp: selectedSituations,
+        responseRadius: setupRadius * 1000,
+        languagesSpoken: ['en'],
+      });
+
+      // Update local user state with new helper profile
+      await updateUser({
+        isHelper: true,
+        helperProfile: response.data.data,
+      });
+
+      setSetupModalVisible(false);
+      Alert.alert(
+        'Profile Created!',
+        'Your helper profile has been submitted for verification. You will be notified once verified.',
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      console.error('Setup helper profile failed:', error);
+      Alert.alert(
+        t('common.error'),
+        error?.response?.data?.error || 'Failed to setup helper profile. Please try again.'
+      );
+    } finally {
+      setSetupLoading(false);
+    }
   };
 
-  // Mock statistics - TODO: Get from backend
+  const getStatusColor = () => isAvailable ? '#10B981' : '#6B7280';
+  const getStatusText = () => isAvailable ? t('helper.online') : t('helper.offline');
+
   const stats = {
     totalHelps: user?.totalHelps || 0,
     avgResponseTime: user?.helperProfile?.responseTime || 0,
@@ -126,196 +194,288 @@ const HelperModeScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>{t('helper.title')}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
-          <Icon name="circle" size={8} color="#FFFFFF" />
-          <Text style={styles.statusText}>{getStatusText()}</Text>
-        </View>
-      </View>
-
-      {/* Availability Toggle Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.cardTitleRow}>
-            <Icon name="heart-pulse" size={28} color={getStatusColor()} />
-            <View style={styles.cardTitleText}>
-              <Text style={styles.cardTitle}>{t('helper.availableToHelp')}</Text>
-              <Text style={styles.cardSubtitle}>
-                {isAvailable 
-                  ? 'You will receive emergency notifications'
-                  : 'Turn on to start receiving requests'}
-              </Text>
-            </View>
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>{t('helper.title')}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
+            <Icon name="circle" size={8} color="#FFFFFF" />
+            <Text style={styles.statusText}>{getStatusText()}</Text>
           </View>
-          <Switch
-            value={isAvailable}
-            onValueChange={handleToggleAvailability}
-            disabled={loading}
-            trackColor={{ false: '#CBD5E0', true: '#86EFAC' }}
-            thumbColor={isAvailable ? '#10B981' : '#F3F4F6'}
-          />
         </View>
-      </View>
 
-      {/* Response Radius Card */}
-      {user?.helperProfile && (
+        {/* Availability Toggle Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Icon name="map-marker-radius" size={24} color="#3B82F6" />
-            <Text style={styles.cardTitle}>{t('helper.responseRadius')}</Text>
+            <View style={styles.cardTitleRow}>
+              <Icon name="heart-pulse" size={28} color={getStatusColor()} />
+              <View style={styles.cardTitleText}>
+                <Text style={styles.cardTitle}>{t('helper.availableToHelp')}</Text>
+                <Text style={styles.cardSubtitle}>
+                  {isAvailable
+                    ? 'You will receive emergency notifications'
+                    : 'Turn on to start receiving requests'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={isAvailable}
+              onValueChange={handleToggleAvailability}
+              disabled={loading}
+              trackColor={{ false: '#CBD5E0', true: '#86EFAC' }}
+              thumbColor={isAvailable ? '#10B981' : '#F3F4F6'}
+            />
           </View>
-          
-          <View style={styles.radiusContainer}>
-            <Text style={styles.radiusValue}>{responseRadius.toFixed(1)} km</Text>
-            <Text style={styles.radiusSubtext}>
-              Emergency requests within this radius
-            </Text>
+        </View>
+
+        {/* Response Radius Card */}
+        {user?.helperProfile && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="map-marker-radius" size={24} color="#3B82F6" />
+              <Text style={styles.cardTitle}>{t('helper.responseRadius')}</Text>
+            </View>
+
+            <View style={styles.radiusContainer}>
+              <Text style={styles.radiusValue}>{responseRadius.toFixed(1)} km</Text>
+              <Text style={styles.radiusSubtext}>
+                Emergency requests within this radius
+              </Text>
+            </View>
+
+            <Slider
+              style={styles.slider}
+              minimumValue={0.5}
+              maximumValue={20}
+              step={0.5}
+              value={responseRadius}
+              onValueChange={setResponseRadius}
+              minimumTrackTintColor="#3B82F6"
+              maximumTrackTintColor="#CBD5E0"
+              thumbTintColor="#3B82F6"
+            />
+
+            <TouchableOpacity
+              style={styles.updateButton}
+              onPress={handleUpdateRadius}
+              disabled={loading}
+            >
+              <Text style={styles.updateButtonText}>Update Radius</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Statistics Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Icon name="chart-line" size={24} color="#F59E0B" />
+            <Text style={styles.cardTitle}>{t('helper.statistics')}</Text>
           </View>
 
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#DBEAFE' }]}>
+                <Icon name="hand-heart" size={24} color="#3B82F6" />
+              </View>
+              <Text style={styles.statValue}>{stats.totalHelps}</Text>
+              <Text style={styles.statLabel}>{t('helper.totalHelps')}</Text>
+            </View>
+
+            <View style={styles.statItem}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
+                <Icon name="clock-fast" size={24} color="#F59E0B" />
+              </View>
+              <Text style={styles.statValue}>
+                {Math.floor(stats.avgResponseTime / 60) || 0}m
+              </Text>
+              <Text style={styles.statLabel}>{t('helper.avgResponseTime')}</Text>
+            </View>
+
+            <View style={styles.statItem}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#FEE2E2' }]}>
+                <Icon name="star" size={24} color="#EF4444" />
+              </View>
+              <Text style={styles.statValue}>{(stats.rating || 0).toFixed(1)}</Text>
+              <Text style={styles.statLabel}>{t('helper.rating')}</Text>
+            </View>
+
+            <View style={styles.statItem}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#D1FAE5' }]}>
+                <Icon name="check-circle" size={24} color="#10B981" />
+              </View>
+              <Text style={styles.statValue}>{stats.successfulHelps}</Text>
+              <Text style={styles.statLabel}>Successful</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Helper Profile Info */}
+        {user?.helperProfile && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="account-details" size={24} color="#8B5CF6" />
+              <Text style={styles.cardTitle}>Helper Profile</Text>
+            </View>
+
+            <View style={styles.profileInfo}>
+              <View style={styles.profileRow}>
+                <Text style={styles.profileLabel}>Training Level:</Text>
+                <Text style={styles.profileValue}>
+                  {user.helperProfile.trainingLevel.replace('_', ' ').toUpperCase()}
+                </Text>
+              </View>
+
+              <View style={styles.profileRow}>
+                <Text style={styles.profileLabel}>Verification:</Text>
+                <View style={styles.verificationBadge}>
+                  <Icon
+                    name={user.helperProfile.verificationStatus === 'verified' ? 'check-decagram' : 'clock-outline'}
+                    size={16}
+                    color={user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B'}
+                  />
+                  <Text style={[
+                    styles.verificationText,
+                    { color: user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B' }
+                  ]}>
+                    {user.helperProfile.verificationStatus.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+
+              {user.helperProfile.situationsWillingToHelp && user.helperProfile.situationsWillingToHelp.length > 0 && (
+                <View style={styles.profileRow}>
+                  <Text style={styles.profileLabel}>Can Help With:</Text>
+                  <View style={styles.situationsList}>
+                    {user.helperProfile.situationsWillingToHelp.map((situation, index) => (
+                      <View key={index} style={styles.situationTag}>
+                        <Text style={styles.situationText}>
+                          {situation.replace('_', ' ')}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Setup Helper Profile Button — fixed: added onPress */}
+        {!user?.helperProfile && (
+          <TouchableOpacity
+            style={styles.setupCard}
+            onPress={() => setSetupModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Icon name="account-plus" size={48} color="#3B82F6" />
+            <Text style={styles.setupTitle}>Become a Helper</Text>
+            <Text style={styles.setupText}>
+              Complete your helper profile to start assisting people in emergencies
+            </Text>
+            <View style={styles.setupButton}>
+              <Text style={styles.setupButtonText}>Setup Helper Profile</Text>
+              <Icon name="arrow-right" size={20} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Important Notice */}
+        <View style={styles.noticeCard}>
+          <Icon name="information" size={24} color="#3B82F6" />
+          <Text style={styles.noticeText}>
+            As a helper, you provide assistance while waiting for professional emergency services.
+            Always ensure your own safety first and call 112/911 when needed.
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* Setup Profile Modal */}
+      <Modal
+        visible={setupModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSetupModalVisible(false)}
+      >
+        <ScrollView style={styles.modalContainer} contentContainerStyle={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Setup Helper Profile</Text>
+            <TouchableOpacity onPress={() => setSetupModalVisible(false)}>
+              <Icon name="close" size={28} color="#1A202C" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Training Level */}
+          <Text style={styles.sectionTitle}>Training Level *</Text>
+          {TRAINING_LEVELS.map(level => (
+            <TouchableOpacity
+              key={level.value}
+              style={[
+                styles.optionRow,
+                selectedTrainingLevel === level.value && styles.optionRowSelected,
+              ]}
+              onPress={() => setSelectedTrainingLevel(level.value)}
+            >
+              <Icon
+                name={selectedTrainingLevel === level.value ? 'radiobox-marked' : 'radiobox-blank'}
+                size={22}
+                color={selectedTrainingLevel === level.value ? '#3B82F6' : '#9CA3AF'}
+              />
+              <Text style={styles.optionLabel}>{level.label}</Text>
+            </TouchableOpacity>
+          ))}
+
+          {/* Situations */}
+          <Text style={styles.sectionTitle}>Situations You Can Help With *</Text>
+          <View style={styles.situationsGrid}>
+            {SITUATION_OPTIONS.map(situation => {
+              const selected = selectedSituations.includes(situation.value);
+              return (
+                <TouchableOpacity
+                  key={situation.value}
+                  style={[styles.situationChip, selected && styles.situationChipSelected]}
+                  onPress={() => toggleSituation(situation.value)}
+                >
+                  <Text style={[styles.situationChipText, selected && styles.situationChipTextSelected]}>
+                    {situation.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Response Radius */}
+          <Text style={styles.sectionTitle}>Response Radius</Text>
+          <View style={styles.radiusContainer}>
+            <Text style={styles.radiusValue}>{setupRadius.toFixed(1)} km</Text>
+          </View>
           <Slider
             style={styles.slider}
             minimumValue={0.5}
             maximumValue={20}
             step={0.5}
-            value={responseRadius}
-            onValueChange={setResponseRadius}
+            value={setupRadius}
+            onValueChange={setSetupRadius}
             minimumTrackTintColor="#3B82F6"
             maximumTrackTintColor="#CBD5E0"
             thumbTintColor="#3B82F6"
           />
 
+          {/* Submit */}
           <TouchableOpacity
-            style={styles.updateButton}
-            onPress={handleUpdateRadius}
-            disabled={loading}
+            style={[styles.submitButton, setupLoading && styles.submitButtonDisabled]}
+            onPress={handleSetupProfile}
+            disabled={setupLoading}
           >
-            <Text style={styles.updateButtonText}>Update Radius</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Statistics Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Icon name="chart-line" size={24} color="#F59E0B" />
-          <Text style={styles.cardTitle}>{t('helper.statistics')}</Text>
-        </View>
-
-        <View style={styles.statsGrid}>
-          <View style={styles.statItem}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#DBEAFE' }]}>
-              <Icon name="hand-heart" size={24} color="#3B82F6" />
-            </View>
-            <Text style={styles.statValue}>{stats.totalHelps}</Text>
-            <Text style={styles.statLabel}>{t('helper.totalHelps')}</Text>
-          </View>
-
-          <View style={styles.statItem}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
-              <Icon name="clock-fast" size={24} color="#F59E0B" />
-            </View>
-            <Text style={styles.statValue}>
-              {Math.floor(stats.avgResponseTime / 60) || 0}m
-            </Text>
-            <Text style={styles.statLabel}>{t('helper.avgResponseTime')}</Text>
-          </View>
-
-          <View style={styles.statItem}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#FEE2E2' }]}>
-              <Icon name="star" size={24} color="#EF4444" />
-            </View>
-            <Text style={styles.statValue}>{(stats.rating || 0).toFixed(1)}</Text>
-            <Text style={styles.statLabel}>{t('helper.rating')}</Text>
-          </View>
-
-          <View style={styles.statItem}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#D1FAE5' }]}>
-              <Icon name="check-circle" size={24} color="#10B981" />
-            </View>
-            <Text style={styles.statValue}>{stats.successfulHelps}</Text>
-            <Text style={styles.statLabel}>Successful</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Helper Profile Info */}
-      {user?.helperProfile && (
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Icon name="account-details" size={24} color="#8B5CF6" />
-            <Text style={styles.cardTitle}>Helper Profile</Text>
-          </View>
-
-          <View style={styles.profileInfo}>
-            <View style={styles.profileRow}>
-              <Text style={styles.profileLabel}>Training Level:</Text>
-              <Text style={styles.profileValue}>
-                {user.helperProfile.trainingLevel.replace('_', ' ').toUpperCase()}
-              </Text>
-            </View>
-
-            <View style={styles.profileRow}>
-              <Text style={styles.profileLabel}>Verification:</Text>
-              <View style={styles.verificationBadge}>
-                <Icon 
-                  name={user.helperProfile.verificationStatus === 'verified' ? 'check-decagram' : 'clock-outline'} 
-                  size={16} 
-                  color={user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B'} 
-                />
-                <Text style={[
-                  styles.verificationText,
-                  { color: user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B' }
-                ]}>
-                  {user.helperProfile.verificationStatus.toUpperCase()}
-                </Text>
-              </View>
-            </View>
-
-            {user.helperProfile.situationsWillingToHelp && user.helperProfile.situationsWillingToHelp.length > 0 && (
-              <View style={styles.profileRow}>
-                <Text style={styles.profileLabel}>Can Help With:</Text>
-                <View style={styles.situationsList}>
-                  {user.helperProfile.situationsWillingToHelp.map((situation, index) => (
-                    <View key={index} style={styles.situationTag}>
-                      <Text style={styles.situationText}>
-                        {situation.replace('_', ' ')}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
+            {setupLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitButtonText}>Create Helper Profile</Text>
             )}
-          </View>
-        </View>
-      )}
-
-      {/* Setup Helper Profile Button */}
-      {!user?.helperProfile && (
-        <TouchableOpacity style={styles.setupCard}>
-          <Icon name="account-plus" size={48} color="#3B82F6" />
-          <Text style={styles.setupTitle}>Become a Helper</Text>
-          <Text style={styles.setupText}>
-            Complete your helper profile to start assisting people in emergencies
-          </Text>
-          <View style={styles.setupButton}>
-            <Text style={styles.setupButtonText}>Setup Helper Profile</Text>
-            <Icon name="arrow-right" size={20} color="#FFFFFF" />
-          </View>
-        </TouchableOpacity>
-      )}
-
-      {/* Important Notice */}
-      <View style={styles.noticeCard}>
-        <Icon name="information" size={24} color="#3B82F6" />
-        <Text style={styles.noticeText}>
-          As a helper, you provide assistance while waiting for professional emergency services. 
-          Always ensure your own safety first and call 112/911 when needed.
-        </Text>
-      </View>
-    </ScrollView>
+          </TouchableOpacity>
+        </ScrollView>
+      </Modal>
+    </>
   );
 };
 
@@ -535,6 +695,94 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1E40AF',
     lineHeight: 20,
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F7FAFC',
+  },
+  modalContent: {
+    padding: 24,
+    paddingBottom: 60,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1A202C',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A202C',
+    marginBottom: 12,
+    marginTop: 24,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+  },
+  optionRowSelected: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  optionLabel: {
+    fontSize: 15,
+    color: '#1A202C',
+    marginLeft: 12,
+  },
+  situationsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  situationChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E0',
+    backgroundColor: '#FFFFFF',
+  },
+  situationChipSelected: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  situationChipText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  situationChipTextSelected: {
+    color: '#3B82F6',
+    fontWeight: '700',
+  },
+  submitButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#CBD5E0',
+  },
+  submitButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 });
 
