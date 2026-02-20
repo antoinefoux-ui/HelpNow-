@@ -97,7 +97,7 @@ const ActivityScreen: React.FC = () => {
               color={getStatusColor(item.status)} 
             />
             <Text style={[styles.typeText, { color: getStatusColor(item.status) }]}>
-              {item.type.replace('_', ' ')}
+              {item.type?.replace('_', ' ') || 'Unknown'}
             </Text>
           </View>
           
@@ -118,7 +118,7 @@ const ActivityScreen: React.FC = () => {
           <View style={styles.infoRow}>
             <Icon name="map-marker" size={16} color="#6B7280" />
             <Text style={styles.infoText} numberOfLines={1}>
-              {item.address}
+              {item.address || 'Unknown location'}
             </Text>
           </View>
 
@@ -137,7 +137,7 @@ const ActivityScreen: React.FC = () => {
             </View>
           )}
 
-          {!isSeeker && (
+          {!isSeeker && item.seekerInfo && (
             <View style={styles.seekerInfo}>
               <Icon name="account-alert" size={16} color="#E53E3E" />
               <Text style={styles.seekerName}>
@@ -161,7 +161,7 @@ const ActivityScreen: React.FC = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Icon name="history" size={64} color="#CBD5E0" />
-      <Text style={styles.emptyTitle}>{t('home.noActivity')}</Text>
+      <Text style={styles.emptyTitle}>{t('activity.noActivity')}</Text>
       <Text style={styles.emptyText}>
         Your emergency requests and responses will appear here
       </Text>
@@ -172,7 +172,7 @@ const ActivityScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>{t('home.recentActivity')}</Text>
+        <Text style={styles.title}>{t('activity.title')}</Text>
       </View>
 
       {/* Filter Tabs */}
