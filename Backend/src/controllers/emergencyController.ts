@@ -31,12 +31,41 @@ class EmergencyController {
   }
 
   /**
+   * Get emergency request by ID
+   */
+  async getEmergency(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      const result = await pool.query(
+        `SELECT * FROM emergencies WHERE id = $1`,
+        [id]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          error: 'Emergency not found'
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: result.rows[0]
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Get active emergency for user
    */
   async getActiveEmergency(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId } = req.params;
-      
+
       const result = await pool.query(
         `SELECT * FROM emergencies 
          WHERE user_id = $1 AND status IN ('pending', 'accepted', 'in_progress')
@@ -44,10 +73,18 @@ class EmergencyController {
          LIMIT 1`,
         [userId]
       );
-      
+
+      if (!result.rows[0]) {
+        res.status(404).json({
+          success: false,
+          error: 'No active emergency found'
+        });
+        return;
+      }
+
       res.status(200).json({
         success: true,
-        data: result.rows[0] || null
+        data: result.rows[0]
       });
     } catch (error) {
       next(error);
@@ -60,7 +97,7 @@ class EmergencyController {
   async getNearbyEmergencies(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { latitude, longitude, radius = 5 } = req.query;
-      
+
       // Using Haversine formula to find nearby emergencies
       const result = await pool.query(
         `SELECT *, 
@@ -74,7 +111,7 @@ class EmergencyController {
          LIMIT 20`,
         [latitude, longitude, radius]
       );
-      
+
       res.status(200).json({
         success: true,
         data: result.rows
@@ -91,7 +128,7 @@ class EmergencyController {
     try {
       const { userId } = req.params;
       const { limit = 20, offset = 0 } = req.query;
-      
+
       const result = await pool.query(
         `SELECT * FROM emergencies
          WHERE user_id = $1
@@ -99,7 +136,7 @@ class EmergencyController {
          LIMIT $2 OFFSET $3`,
         [userId, limit, offset]
       );
-      
+
       res.status(200).json({
         success: true,
         data: result.rows
@@ -116,7 +153,7 @@ class EmergencyController {
     try {
       const { id } = req.params;
       const { helperId } = req.body;
-      
+
       const result = await pool.query(
         `UPDATE emergencies
          SET status = 'accepted', helper_id = $1, accepted_at = NOW()
@@ -124,7 +161,7 @@ class EmergencyController {
          RETURNING *`,
         [helperId, id]
       );
-      
+
       if (result.rows.length === 0) {
         res.status(404).json({
           success: false,
@@ -132,7 +169,7 @@ class EmergencyController {
         });
         return;
       }
-      
+
       res.status(200).json({
         success: true,
         data: result.rows[0]
@@ -149,7 +186,7 @@ class EmergencyController {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      
+
       const result = await pool.query(
         `UPDATE emergencies
          SET status = 'cancelled', cancelled_at = NOW(), cancellation_reason = $1
@@ -157,7 +194,7 @@ class EmergencyController {
          RETURNING *`,
         [reason, id]
       );
-      
+
       if (result.rows.length === 0) {
         res.status(404).json({
           success: false,
@@ -165,7 +202,7 @@ class EmergencyController {
         });
         return;
       }
-      
+
       res.status(200).json({
         success: true,
         data: result.rows[0]
@@ -182,7 +219,7 @@ class EmergencyController {
     try {
       const { id } = req.params;
       const { latitude, longitude, eta } = req.body;
-      
+
       const result = await pool.query(
         `UPDATE emergencies
          SET helper_latitude = $1, helper_longitude = $2, eta_minutes = $3, last_location_update = NOW()
@@ -190,7 +227,7 @@ class EmergencyController {
          RETURNING *`,
         [latitude, longitude, eta, id]
       );
-      
+
       if (result.rows.length === 0) {
         res.status(404).json({
           success: false,
@@ -198,7 +235,7 @@ class EmergencyController {
         });
         return;
       }
-      
+
       res.status(200).json({
         success: true,
         data: result.rows[0]
@@ -214,7 +251,7 @@ class EmergencyController {
   async markHelperArrived(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      
+
       const result = await pool.query(
         `UPDATE emergencies
          SET status = 'in_progress', arrived_at = NOW()
@@ -222,7 +259,7 @@ class EmergencyController {
          RETURNING *`,
         [id]
       );
-      
+
       if (result.rows.length === 0) {
         res.status(404).json({
           success: false,
@@ -230,7 +267,7 @@ class EmergencyController {
         });
         return;
       }
-      
+
       res.status(200).json({
         success: true,
         data: result.rows[0]
@@ -247,7 +284,7 @@ class EmergencyController {
     try {
       const { id } = req.params;
       const { resolutionNotes } = req.body;
-      
+
       const result = await pool.query(
         `UPDATE emergencies
          SET status = 'resolved', resolved_at = NOW(), resolution_notes = $1
@@ -255,7 +292,7 @@ class EmergencyController {
          RETURNING *`,
         [resolutionNotes, id]
       );
-      
+
       if (result.rows.length === 0) {
         res.status(404).json({
           success: false,
@@ -263,7 +300,7 @@ class EmergencyController {
         });
         return;
       }
-      
+
       res.status(200).json({
         success: true,
         data: result.rows[0]
@@ -280,7 +317,7 @@ class EmergencyController {
     try {
       const { id } = req.params;
       const file = req.file;
-      
+
       if (!file) {
         res.status(400).json({
           success: false,
@@ -288,15 +325,15 @@ class EmergencyController {
         });
         return;
       }
-      
+
       // TODO: Upload file to storage service (S3, CloudFlare R2, etc.)
       const voiceNoteUrl = `https://storage.helpnow.com/emergencies/${id}/voice-${Date.now()}.m4a`;
-      
+
       await pool.query(
         'UPDATE emergencies SET voice_note_url = $1 WHERE id = $2',
         [voiceNoteUrl, id]
       );
-      
+
       res.status(200).json({
         success: true,
         data: {
