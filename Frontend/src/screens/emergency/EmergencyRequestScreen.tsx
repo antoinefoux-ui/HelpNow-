@@ -29,7 +29,8 @@ interface EmergencyOption {
 
 const emergencyOptions: EmergencyOption[] = [
   { type: 'heart_attack', icon: 'heart-pulse', color: '#DC2626', labelKey: 'emergency.heartAttack' },
-  { type: 'accident', icon: 'car-crash', color: '#EA580C', labelKey: 'emergency.accident' },
+  // Fixed: 'car-crash' is not a valid MaterialCommunityIcons name — replaced with 'car-emergency'
+  { type: 'accident', icon: 'car-emergency', color: '#EA580C', labelKey: 'emergency.accident' },
   { type: 'fall', icon: 'human-handsdown', color: '#D97706', labelKey: 'emergency.fall' },
   { type: 'breathing_difficulty', icon: 'lungs', color: '#2563EB', labelKey: 'emergency.breathing' },
   { type: 'loss_consciousness', icon: 'head-alert', color: '#7C3AED', labelKey: 'emergency.unconscious' },
