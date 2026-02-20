@@ -15,6 +15,23 @@ import { useAuth } from '../../contexts/AuthContext';
 import { emergencyService } from '../../services/emergencyService';
 import { EmergencyRequest } from '../../types';
 
+// Safely format a date from either camelCase or snake_case fields
+const formatDate = (item: any): string => {
+  const raw = item.createdAt ?? item.created_at ?? null;
+  if (!raw) return 'Unknown date';
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return 'Unknown date';
+  return format(d, 'MMM dd, yyyy • HH:mm');
+};
+
+// Resolve field values that may be camelCase or snake_case from the DB
+const getField = (item: any, ...keys: string[]): any => {
+  for (const key of keys) {
+    if (item[key] !== undefined && item[key] !== null) return item[key];
+  }
+  return null;
+};
+
 const ActivityScreen: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -34,15 +51,19 @@ const ActivityScreen: React.FC = () => {
     try {
       setLoading(true);
       const data = await emergencyService.getUserHistory(user.id);
-      
-      // Filter based on selection
+
+      // Filter based on selection — support both camelCase and snake_case IDs
       let filtered = data;
       if (filter === 'seeker') {
-        filtered = data.filter(r => r.seekerId === user.id);
+        filtered = data.filter(r =>
+          getField(r, 'seekerId', 'seeker_id', 'user_id') === user.id
+        );
       } else if (filter === 'helper') {
-        filtered = data.filter(r => r.acceptedHelperId === user.id);
+        filtered = data.filter(r =>
+          getField(r, 'acceptedHelperId', 'accepted_helper_id', 'helper_id') === user.id
+        );
       }
-      
+
       setHistory(filtered);
     } catch (error) {
       console.error('Failed to load history:', error);
@@ -84,23 +105,32 @@ const ActivityScreen: React.FC = () => {
   };
 
   const renderEmergencyItem = ({ item }: { item: EmergencyRequest }) => {
-    const isSeeker = item.seekerId === user?.id;
-    const date = new Date(item.createdAt);
+    const seekerId = getField(item, 'seekerId', 'seeker_id', 'user_id');
+    const isSeeker = seekerId === user?.id;
+
+    // Support both camelCase and snake_case for all fields
+    const itemType: string = getField(item, 'type', 'category') ?? 'other';
+    const address: string | null = getField(item, 'address') ?? null;
+    const description: string | null = getField(item, 'description') ?? null;
+    const rating: number | null = getField(item, 'rating') ?? null;
+    const acceptedHelperInfo = getField(item, 'acceptedHelperInfo', 'accepted_helper_info');
+    const seekerInfo = getField(item, 'seekerInfo', 'seeker_info');
+    const itemId: string = getField(item, 'id') ?? Math.random().toString();
 
     return (
       <TouchableOpacity style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={[styles.typeBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-            <Icon 
-              name={item.type === 'heart_attack' ? 'heart-pulse' : 'alert'} 
-              size={20} 
-              color={getStatusColor(item.status)} 
+            <Icon
+              name={itemType === 'heart_attack' ? 'heart-pulse' : 'alert'}
+              size={20}
+              color={getStatusColor(item.status)}
             />
             <Text style={[styles.typeText, { color: getStatusColor(item.status) }]}>
-              {item.type?.replace('_', ' ') || 'Unknown'}
+              {itemType.replace(/_/g, ' ')}
             </Text>
           </View>
-          
+
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
             <Icon name={getStatusIcon(item.status)} size={16} color="#FFFFFF" />
             <Text style={styles.statusText}>{item.status}</Text>
@@ -111,46 +141,46 @@ const ActivityScreen: React.FC = () => {
           <View style={styles.infoRow}>
             <Icon name="clock-outline" size={16} color="#6B7280" />
             <Text style={styles.infoText}>
-              {format(date, 'MMM dd, yyyy • HH:mm')}
+              {formatDate(item)}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
             <Icon name="map-marker" size={16} color="#6B7280" />
             <Text style={styles.infoText} numberOfLines={1}>
-              {item.address || 'Unknown location'}
+              {address || 'Unknown location'}
             </Text>
           </View>
 
-          {isSeeker && item.acceptedHelperInfo && (
+          {isSeeker && acceptedHelperInfo && (
             <View style={styles.helperInfo}>
               <Icon name="account-heart" size={16} color="#10B981" />
               <Text style={styles.helperName}>
-                Helped by {item.acceptedHelperInfo.name}
+                Helped by {acceptedHelperInfo.name}
               </Text>
-              {item.rating && (
+              {rating && (
                 <View style={styles.ratingContainer}>
                   <Icon name="star" size={14} color="#F59E0B" />
-                  <Text style={styles.ratingText}>{item.rating}</Text>
+                  <Text style={styles.ratingText}>{rating}</Text>
                 </View>
               )}
             </View>
           )}
 
-          {!isSeeker && item.seekerInfo && (
+          {!isSeeker && seekerInfo && (
             <View style={styles.seekerInfo}>
               <Icon name="account-alert" size={16} color="#E53E3E" />
               <Text style={styles.seekerName}>
-                Helped {item.seekerInfo.name}
+                Helped {seekerInfo.name}
               </Text>
             </View>
           )}
         </View>
 
-        {item.description && (
+        {description && (
           <View style={styles.descriptionContainer}>
             <Text style={styles.description} numberOfLines={2}>
-              "{item.description}"
+              "{description}"
             </Text>
           </View>
         )}
@@ -209,7 +239,7 @@ const ActivityScreen: React.FC = () => {
       <FlatList
         data={history}
         renderItem={renderEmergencyItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => getField(item, 'id')?.toString() ?? Math.random().toString()}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmptyState}
         refreshControl={
