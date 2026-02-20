@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { pool } from '../config/database';
-import { redisClient } from '../config/redis';
+import { safeRedis } from '../config/redis';
 
 class HelperController {
   /**
@@ -60,7 +60,9 @@ class HelperController {
       );
 
       await client.query('COMMIT');
-      await redisClient.del(`user:${userId}`);
+
+      // Use safeRedis — won't crash if Redis is unavailable
+      await safeRedis.del(`user:${userId}`);
 
       res.status(201).json({
         success: true,
@@ -124,7 +126,7 @@ class HelperController {
         return;
       }
 
-      await redisClient.del(`user:${userId}`);
+      await safeRedis.del(`user:${userId}`);
 
       res.json({
         success: true,
@@ -160,7 +162,7 @@ class HelperController {
         [userId, type, issuer, issueDate, expiryDate, documentUrl, false]
       );
 
-      await redisClient.del(`user:${userId}`);
+      await safeRedis.del(`user:${userId}`);
 
       res.status(201).json({
         success: true,
@@ -207,7 +209,7 @@ class HelperController {
 
       const result = await pool.query(query, values);
 
-      await redisClient.del(`user:${userId}`);
+      await safeRedis.del(`user:${userId}`);
 
       res.json({
         success: true,
@@ -230,7 +232,7 @@ class HelperController {
         [certId, userId]
       );
 
-      await redisClient.del(`user:${userId}`);
+      await safeRedis.del(`user:${userId}`);
 
       res.json({
         success: true,
@@ -248,7 +250,6 @@ class HelperController {
     try {
       const { userId } = req.params;
 
-      // Get total helps and average response time
       const statsResult = await pool.query(
         `SELECT 
           COUNT(*) as total_helps,
@@ -262,7 +263,6 @@ class HelperController {
 
       const stats = statsResult.rows[0];
 
-      // Get recent helps
       const recentHelpsResult = await pool.query(
         `SELECT id, type, status, rating, created_at, resolved_at
         FROM emergency_requests
@@ -303,7 +303,6 @@ class HelperController {
         return;
       }
 
-      // Store in helper_locations table
       await pool.query(
         `INSERT INTO helper_locations (user_id, last_location, updated_at)
         VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), NOW())
@@ -313,10 +312,10 @@ class HelperController {
         [userId, longitude, latitude]
       );
 
-      // Also cache in Redis for faster access
-      await redisClient.setEx(
+      // Use safeRedis — won't crash if Redis is unavailable
+      await safeRedis.setEx(
         `helper_location:${userId}`,
-        300, // 5 minutes
+        300,
         JSON.stringify({ latitude, longitude, updatedAt: new Date() })
       );
 
