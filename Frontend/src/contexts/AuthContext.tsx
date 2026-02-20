@@ -1,7 +1,15 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
 import { authService } from '../services/authService';
+import { onTokenExpired } from './apiClient'; // ← event bus from apiClient
 
 interface AuthContextType {
   user: User | null;
@@ -22,11 +30,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // On app start, load user + token from storage
+  // ------------------------------------------------------------------
+  // Shared "clear everything" helper — used by signOut AND token expiry
+  // ------------------------------------------------------------------
+  const clearAuthState = useCallback(async () => {
+    setUser(null);
+    setToken(null);
+    await AsyncStorage.multiRemove(['user', 'accessToken', 'refreshToken']);
+  }, []);
+
+  // ------------------------------------------------------------------
+  // On app start: restore persisted auth
+  // ------------------------------------------------------------------
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const [storedUser, storedToken] = await AsyncStorage.multiGet(['user', 'accessToken']);
+        const [storedUser, storedToken] = await AsyncStorage.multiGet([
+          'user',
+          'accessToken',
+        ]);
         if (storedUser[1]) setUser(JSON.parse(storedUser[1]));
         if (storedToken[1]) setToken(storedToken[1]);
       } catch (error) {
@@ -38,12 +60,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     void initAuth();
   }, []);
 
+  // ------------------------------------------------------------------
+  // Listen for 401 "Token expired" fired by apiClient interceptor.
+  // When it fires, wipe local state — the navigator will react to
+  // user === null and redirect to the login screen automatically.
+  // ------------------------------------------------------------------
+  useEffect(() => {
+    const unsubscribe = onTokenExpired(() => {
+      console.warn('[Auth] Token expired — signing out automatically');
+      clearAuthState();
+    });
+    return unsubscribe; // clean up listener on unmount
+  }, [clearAuthState]);
+
+  // ------------------------------------------------------------------
+  // Auth actions
+  // ------------------------------------------------------------------
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { user: loggedInUser, accessToken } = await authService.signIn(email, password);
+      const { user: loggedInUser, accessToken } = await authService.signIn(
+        email,
+        password,
+      );
 
-      // Save to state AND storage atomically
       setUser(loggedInUser);
       setToken(accessToken);
 
@@ -59,10 +99,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signUp = async (email: string, password: string, userData: Partial<User>) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    userData: Partial<User>,
+  ) => {
     try {
       setLoading(true);
-      const { user: newUser, accessToken } = await authService.signUp(email, password, userData);
+      const { user: newUser, accessToken } = await authService.signUp(
+        email,
+        password,
+        userData,
+      );
 
       setUser(newUser);
       setToken(accessToken);
@@ -85,11 +133,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         await authService.signOut?.();
       } catch {
-        // backend signOut optional
+        // backend signOut is optional — swallow the error
       }
-      setUser(null);
-      setToken(null);
-      await AsyncStorage.multiRemove(['user', 'accessToken', 'refreshToken']);
+      await clearAuthState();
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
