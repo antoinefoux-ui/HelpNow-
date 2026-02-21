@@ -77,15 +77,13 @@ class UserController {
         }
       }
 
-      const addressResult = await pool.query(
-        `SELECT id, label, street, city, state, zip_code, country,
-                apartment_number, building_code, floor_number,
-                arrival_instructions, is_primary,
-                ST_X(location::geometry) as longitude,
-                ST_Y(location::geometry) as latitude
-         FROM addresses WHERE user_id = $1`,
-        [id]
-      );
+   const addressResult = await pool.query(
+  `SELECT id, label, street, city, state, zip_code, country,
+          apartment_number, building_code, floor_number,
+          arrival_instructions, is_primary
+   FROM addresses WHERE user_id = $1`,
+  [id]
+);
       user.addresses = addressResult.rows;
 
       const contactsResult = await pool.query(
