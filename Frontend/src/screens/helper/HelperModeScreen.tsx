@@ -70,7 +70,7 @@ const HelperModeScreen: React.FC = () => {
       setLoading(true);
       setIsAvailable(value);
 
-      await axios.put(`${API_URL}/helpers/${user.id}`, { isAvailable: value });
+      await axios.put(`${API_URL}/helpers/${user.id}/availability`, { isAvailable: value });
       await refreshUser();
 
       if (value) {
@@ -98,7 +98,7 @@ const HelperModeScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      await axios.put(`${API_URL}/helpers/${user.id}`, {
+      await axios.put(`${API_URL}/helpers/${user.id}/availability`, {
         responseRadius: responseRadius * 1000,
       });
       await refreshUser();
