@@ -39,9 +39,6 @@ const SITUATION_OPTIONS = [
 
 const HelperModeScreen: React.FC = () => {
   const { t } = useTranslation();
-  // FIX: Use refreshUser instead of updateUser.
-  // updateUser calls PUT /users/:id which rejects helperProfile fields → 400 "No fields to update".
-  // Instead: call PUT /helpers/:id directly, then refreshUser (GET /users/:id) to sync local state.
   const { user, refreshUser } = useAuth();
 
   const [isAvailable, setIsAvailable] = useState(false);
@@ -61,23 +58,11 @@ const HelperModeScreen: React.FC = () => {
     }
   }, [user]);
 
-  // FIX: was updateUser({ helperProfile: { ...user.helperProfile, isAvailable: value } })
-  //      → hit PUT /users/:id → 400 "No fields to update"
-  //      Now: PUT /helpers/:id with only the changed field, then refreshUser to sync.
   const handleToggleAvailability = async (value: boolean) => {
     if (!user) return;
 
     if (!user.helperProfile) {
       Alert.alert('Setup Required', 'Please complete your helper profile first', [{ text: 'OK' }]);
-      return;
-    }
-
-    if (user.helperProfile.verificationStatus !== 'verified') {
-      Alert.alert(
-        'Verification Required',
-        'Your helper profile needs to be verified before you can go online',
-        [{ text: 'OK' }]
-      );
       return;
     }
 
@@ -107,9 +92,6 @@ const HelperModeScreen: React.FC = () => {
     }
   };
 
-  // FIX: was updateUser({ helperProfile: { ...user.helperProfile!, responseRadius } })
-  //      → hit PUT /users/:id → 400 "No fields to update"
-  //      Now: PUT /helpers/:id directly.
   const handleUpdateRadius = async () => {
     if (!user) return;
 
@@ -140,9 +122,8 @@ const HelperModeScreen: React.FC = () => {
     );
   };
 
-  // FIX: was calling updateUser({ helperProfile: response.data.data }) after POST /helpers/:id/setup
-  //      → hit PUT /users/:id → 400 "No fields to update"
-  //      Now: just call refreshUser() — GET /users/:id now includes the newly created helperProfile.
+  // FIX: No confirmation alert — save directly and close modal immediately.
+  // refreshUser() re-fetches GET /users/:id which now includes the new helperProfile.
   const handleSetupProfile = async () => {
     if (!user) return;
 
@@ -161,14 +142,9 @@ const HelperModeScreen: React.FC = () => {
         languagesSpoken: ['en'],
       });
 
+      // Sync state first, then close modal — no confirmation dialog
       await refreshUser();
-
       setSetupModalVisible(false);
-      Alert.alert(
-        'Profile Created!',
-        'Your helper profile has been submitted for verification. You will be notified once verified.',
-        [{ text: 'OK' }]
-      );
     } catch (error: any) {
       console.error('Setup helper profile failed:', error);
       Alert.alert(
