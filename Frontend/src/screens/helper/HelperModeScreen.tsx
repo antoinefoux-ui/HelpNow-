@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  TextInput,
   Modal,
   ActivityIndicator,
 } from 'react-native';
@@ -40,13 +39,15 @@ const SITUATION_OPTIONS = [
 
 const HelperModeScreen: React.FC = () => {
   const { t } = useTranslation();
-  const { user, updateUser } = useAuth();
+  // FIX: Use refreshUser instead of updateUser.
+  // updateUser calls PUT /users/:id which rejects helperProfile fields → 400 "No fields to update".
+  // Instead: call PUT /helpers/:id directly, then refreshUser (GET /users/:id) to sync local state.
+  const { user, refreshUser } = useAuth();
 
   const [isAvailable, setIsAvailable] = useState(false);
   const [responseRadius, setResponseRadius] = useState(5);
   const [loading, setLoading] = useState(false);
 
-  // Setup modal state
   const [setupModalVisible, setSetupModalVisible] = useState(false);
   const [selectedTrainingLevel, setSelectedTrainingLevel] = useState('basic');
   const [selectedSituations, setSelectedSituations] = useState<string[]>([]);
@@ -60,19 +61,18 @@ const HelperModeScreen: React.FC = () => {
     }
   }, [user]);
 
+  // FIX: was updateUser({ helperProfile: { ...user.helperProfile, isAvailable: value } })
+  //      → hit PUT /users/:id → 400 "No fields to update"
+  //      Now: PUT /helpers/:id with only the changed field, then refreshUser to sync.
   const handleToggleAvailability = async (value: boolean) => {
     if (!user) return;
 
     if (!user.helperProfile) {
-      Alert.alert(
-        'Setup Required',
-        'Please complete your helper profile first',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Setup Required', 'Please complete your helper profile first', [{ text: 'OK' }]);
       return;
     }
 
-    if (!user.helperProfile.verificationStatus || user.helperProfile.verificationStatus !== 'verified') {
+    if (user.helperProfile.verificationStatus !== 'verified') {
       Alert.alert(
         'Verification Required',
         'Your helper profile needs to be verified before you can go online',
@@ -85,14 +85,8 @@ const HelperModeScreen: React.FC = () => {
       setLoading(true);
       setIsAvailable(value);
 
-      // FIX: Only update helperProfile fields — don't send isHelper/helperProfile
-      // to the /users endpoint which doesn't accept them (causes 400 "No fields to update")
-      await updateUser({
-        helperProfile: {
-          ...user.helperProfile,
-          isAvailable: value,
-        },
-      });
+      await axios.put(`${API_URL}/helpers/${user.id}`, { isAvailable: value });
+      await refreshUser();
 
       if (value) {
         socketService.setHelperAvailability(user.id, true);
@@ -113,17 +107,19 @@ const HelperModeScreen: React.FC = () => {
     }
   };
 
+  // FIX: was updateUser({ helperProfile: { ...user.helperProfile!, responseRadius } })
+  //      → hit PUT /users/:id → 400 "No fields to update"
+  //      Now: PUT /helpers/:id directly.
   const handleUpdateRadius = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-      await updateUser({
-        helperProfile: {
-          ...user.helperProfile!,
-          responseRadius: responseRadius * 1000,
-        },
+
+      await axios.put(`${API_URL}/helpers/${user.id}`, {
+        responseRadius: responseRadius * 1000,
       });
+      await refreshUser();
 
       Alert.alert(
         t('common.success'),
@@ -144,6 +140,9 @@ const HelperModeScreen: React.FC = () => {
     );
   };
 
+  // FIX: was calling updateUser({ helperProfile: response.data.data }) after POST /helpers/:id/setup
+  //      → hit PUT /users/:id → 400 "No fields to update"
+  //      Now: just call refreshUser() — GET /users/:id now includes the newly created helperProfile.
   const handleSetupProfile = async () => {
     if (!user) return;
 
@@ -155,19 +154,14 @@ const HelperModeScreen: React.FC = () => {
     try {
       setSetupLoading(true);
 
-      const response = await axios.post(`${API_URL}/helpers/${user.id}/setup`, {
+      await axios.post(`${API_URL}/helpers/${user.id}/setup`, {
         trainingLevel: selectedTrainingLevel,
         situationsWillingToHelp: selectedSituations,
         responseRadius: setupRadius * 1000,
         languagesSpoken: ['en'],
       });
 
-      // FIX: Don't send isHelper/helperProfile to the /users endpoint.
-      // The /helpers/:id/setup endpoint already handles everything on the backend.
-      // We only update local state via updateUser with the returned helper profile data.
-      await updateUser({
-        helperProfile: response.data.data,
-      });
+      await refreshUser();
 
       setSetupModalVisible(false);
       Alert.alert(
@@ -186,8 +180,8 @@ const HelperModeScreen: React.FC = () => {
     }
   };
 
-  const getStatusColor = () => isAvailable ? '#10B981' : '#6B7280';
-  const getStatusText = () => isAvailable ? t('helper.online') : t('helper.offline');
+  const getStatusColor = () => (isAvailable ? '#10B981' : '#6B7280');
+  const getStatusText = () => (isAvailable ? t('helper.online') : t('helper.offline'));
 
   const stats = {
     totalHelps: user?.totalHelps || 0,
@@ -199,7 +193,6 @@ const HelperModeScreen: React.FC = () => {
   return (
     <>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{t('helper.title')}</Text>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
@@ -208,7 +201,6 @@ const HelperModeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Availability Toggle Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.cardTitleRow}>
@@ -232,7 +224,6 @@ const HelperModeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Response Radius Card */}
         {user?.helperProfile && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -242,9 +233,7 @@ const HelperModeScreen: React.FC = () => {
 
             <View style={styles.radiusContainer}>
               <Text style={styles.radiusValue}>{responseRadius.toFixed(1)} km</Text>
-              <Text style={styles.radiusSubtext}>
-                Emergency requests within this radius
-              </Text>
+              <Text style={styles.radiusSubtext}>Emergency requests within this radius</Text>
             </View>
 
             <Slider
@@ -269,7 +258,6 @@ const HelperModeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Statistics Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Icon name="chart-line" size={24} color="#F59E0B" />
@@ -313,7 +301,6 @@ const HelperModeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Helper Profile Info */}
         {user?.helperProfile && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -324,7 +311,6 @@ const HelperModeScreen: React.FC = () => {
             <View style={styles.profileInfo}>
               <View style={styles.profileRow}>
                 <Text style={styles.profileLabel}>Training Level:</Text>
-                {/* FIX: Guard against undefined before calling .replace() */}
                 <Text style={styles.profileValue}>
                   {(user.helperProfile.trainingLevel ?? '').replace(/_/g, ' ').toUpperCase()}
                 </Text>
@@ -338,7 +324,6 @@ const HelperModeScreen: React.FC = () => {
                     size={16}
                     color={user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B'}
                   />
-                  {/* FIX: Guard against undefined before calling .toUpperCase() */}
                   <Text style={[
                     styles.verificationText,
                     { color: user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B' }
@@ -354,7 +339,6 @@ const HelperModeScreen: React.FC = () => {
                   <View style={styles.situationsList}>
                     {user.helperProfile.situationsWillingToHelp.map((situation, index) => (
                       <View key={index} style={styles.situationTag}>
-                        {/* FIX: Guard against undefined before calling .replace() */}
                         <Text style={styles.situationText}>
                           {(situation ?? '').replace(/_/g, ' ')}
                         </Text>
@@ -367,7 +351,6 @@ const HelperModeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Setup Helper Profile Button */}
         {!user?.helperProfile && (
           <TouchableOpacity
             style={styles.setupCard}
@@ -386,7 +369,6 @@ const HelperModeScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
-        {/* Important Notice */}
         <View style={styles.noticeCard}>
           <Icon name="information" size={24} color="#3B82F6" />
           <Text style={styles.noticeText}>
@@ -396,7 +378,6 @@ const HelperModeScreen: React.FC = () => {
         </View>
       </ScrollView>
 
-      {/* Setup Profile Modal */}
       <Modal
         visible={setupModalVisible}
         animationType="slide"
@@ -411,15 +392,11 @@ const HelperModeScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Training Level */}
           <Text style={styles.sectionTitle}>Training Level *</Text>
           {TRAINING_LEVELS.map(level => (
             <TouchableOpacity
               key={level.value}
-              style={[
-                styles.optionRow,
-                selectedTrainingLevel === level.value && styles.optionRowSelected,
-              ]}
+              style={[styles.optionRow, selectedTrainingLevel === level.value && styles.optionRowSelected]}
               onPress={() => setSelectedTrainingLevel(level.value)}
             >
               <Icon
@@ -431,7 +408,6 @@ const HelperModeScreen: React.FC = () => {
             </TouchableOpacity>
           ))}
 
-          {/* Situations */}
           <Text style={styles.sectionTitle}>Situations You Can Help With *</Text>
           <View style={styles.situationsGrid}>
             {SITUATION_OPTIONS.map(situation => {
@@ -450,7 +426,6 @@ const HelperModeScreen: React.FC = () => {
             })}
           </View>
 
-          {/* Response Radius */}
           <Text style={styles.sectionTitle}>Response Radius</Text>
           <View style={styles.radiusContainer}>
             <Text style={styles.radiusValue}>{setupRadius.toFixed(1)} km</Text>
@@ -467,7 +442,6 @@ const HelperModeScreen: React.FC = () => {
             thumbTintColor="#3B82F6"
           />
 
-          {/* Submit */}
           <TouchableOpacity
             style={[styles.submitButton, setupLoading && styles.submitButtonDisabled]}
             onPress={handleSetupProfile}
@@ -486,310 +460,61 @@ const HelperModeScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7FAFC',
-  },
-  content: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1A202C',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginLeft: 6,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  cardTitleText: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A202C',
-    marginLeft: 12,
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  radiusContainer: {
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  radiusValue: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#3B82F6',
-  },
-  radiusSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-  },
-  updateButton: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  updateButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  statItem: {
-    width: '48%',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  statIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1A202C',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  profileInfo: {
-    gap: 16,
-  },
-  profileRow: {
-    gap: 8,
-  },
-  profileLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  profileValue: {
-    fontSize: 16,
-    color: '#1A202C',
-    fontWeight: '500',
-  },
-  verificationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  verificationText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  situationsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  situationTag: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  situationText: {
-    fontSize: 12,
-    color: '#4B5563',
-    textTransform: 'capitalize',
-  },
-  setupCard: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  setupTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1A202C',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  setupText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  setupButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  setupButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginRight: 8,
-  },
-  noticeCard: {
-    flexDirection: 'row',
-    backgroundColor: '#EFF6FF',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-  },
-  noticeText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#1E40AF',
-    lineHeight: 20,
-  },
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#F7FAFC',
-  },
-  modalContent: {
-    padding: 24,
-    paddingBottom: 60,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1A202C',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A202C',
-    marginBottom: 12,
-    marginTop: 24,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
-  },
-  optionRowSelected: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
-  },
-  optionLabel: {
-    fontSize: 15,
-    color: '#1A202C',
-    marginLeft: 12,
-  },
-  situationsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  situationChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#CBD5E0',
-    backgroundColor: '#FFFFFF',
-  },
-  situationChipSelected: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
-  },
-  situationChipText: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  situationChipTextSelected: {
-    color: '#3B82F6',
-    fontWeight: '700',
-  },
-  submitButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 32,
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#CBD5E0',
-  },
-  submitButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
+  container: { flex: 1, backgroundColor: '#F7FAFC' },
+  content: { padding: 20, paddingTop: 60, paddingBottom: 100 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#1A202C' },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+  statusText: { fontSize: 12, fontWeight: '600', color: '#FFFFFF', marginLeft: 6 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  cardTitleText: { marginLeft: 12, flex: 1 },
+  cardTitle: { fontSize: 18, fontWeight: '600', color: '#1A202C', marginLeft: 12 },
+  cardSubtitle: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  radiusContainer: { alignItems: 'center', marginVertical: 16 },
+  radiusValue: { fontSize: 36, fontWeight: 'bold', color: '#3B82F6' },
+  radiusSubtext: { fontSize: 14, color: '#6B7280', marginTop: 4 },
+  slider: { width: '100%', height: 40 },
+  updateButton: { backgroundColor: '#3B82F6', paddingVertical: 12, borderRadius: 8, alignItems: 'center', marginTop: 12 },
+  updateButtonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  statItem: { width: '48%', alignItems: 'center', marginBottom: 16 },
+  statIconContainer: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  statValue: { fontSize: 24, fontWeight: 'bold', color: '#1A202C', marginBottom: 4 },
+  statLabel: { fontSize: 12, color: '#6B7280', textAlign: 'center' },
+  profileInfo: { gap: 16 },
+  profileRow: { gap: 8 },
+  profileLabel: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  profileValue: { fontSize: 16, color: '#1A202C', fontWeight: '500' },
+  verificationBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  verificationText: { fontSize: 14, fontWeight: '600' },
+  situationsList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  situationTag: { backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  situationText: { fontSize: 12, color: '#4B5563', textTransform: 'capitalize' },
+  setupCard: { backgroundColor: '#EFF6FF', borderRadius: 16, padding: 32, alignItems: 'center', marginBottom: 16 },
+  setupTitle: { fontSize: 24, fontWeight: 'bold', color: '#1A202C', marginTop: 16, marginBottom: 8 },
+  setupText: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 20 },
+  setupButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#3B82F6', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 },
+  setupButtonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF', marginRight: 8 },
+  noticeCard: { flexDirection: 'row', backgroundColor: '#EFF6FF', padding: 16, borderRadius: 12, gap: 12 },
+  noticeText: { flex: 1, fontSize: 13, color: '#1E40AF', lineHeight: 20 },
+  modalContainer: { flex: 1, backgroundColor: '#F7FAFC' },
+  modalContent: { padding: 24, paddingBottom: 60 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
+  modalTitle: { fontSize: 24, fontWeight: 'bold', color: '#1A202C' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1A202C', marginBottom: 12, marginTop: 24 },
+  optionRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 8, borderWidth: 2, borderColor: '#E2E8F0' },
+  optionRowSelected: { borderColor: '#3B82F6', backgroundColor: '#EFF6FF' },
+  optionLabel: { fontSize: 15, color: '#1A202C', marginLeft: 12 },
+  situationsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  situationChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#CBD5E0', backgroundColor: '#FFFFFF' },
+  situationChipSelected: { borderColor: '#3B82F6', backgroundColor: '#EFF6FF' },
+  situationChipText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+  situationChipTextSelected: { color: '#3B82F6', fontWeight: '700' },
+  submitButton: { backgroundColor: '#3B82F6', borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center', marginTop: 32 },
+  submitButtonDisabled: { backgroundColor: '#CBD5E0' },
+  submitButtonText: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' },
 });
 
 export default HelperModeScreen;
