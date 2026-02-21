@@ -394,7 +394,5 @@ async updateEmergency(req: Request, res: Response, next: NextFunction): Promise<
   }
 }
 
-router.put('/:id', authenticate, emergencyController.updateEmergency);
-
 // Export as default
 export default new EmergencyController();
