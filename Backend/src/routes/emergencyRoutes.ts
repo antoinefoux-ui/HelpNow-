@@ -85,7 +85,7 @@ router.post('/:id/arrived', emergencyController.markHelperArrived);
  */
 router.post('/:id/resolve', emergencyController.resolveEmergency);
 
-router.put('/:id', authenticate, emergencyController.updateEmergency);
+router.put('/:id', emergencyController.updateEmergency);
 
 /**
  * @route   POST /api/v1/emergencies/:id/voice-note
