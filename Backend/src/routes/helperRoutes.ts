@@ -16,7 +16,7 @@ router.post('/:userId/setup', helperController.setupHelperProfile);
 
 /**
  * @route   PUT /api/v1/helpers/:userId/availability
- * @desc    Update helper availability
+ * @desc    Update helper availability and/or response radius
  * @access  Private
  */
 router.put('/:userId/availability', helperController.updateAvailability);
