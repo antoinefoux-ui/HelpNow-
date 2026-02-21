@@ -19,7 +19,31 @@ import { RootStackParamList, User } from '../../types';
 
 type EditProfileNavigationProp = StackNavigationProp<RootStackParamList>;
 
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+// Convert YYYY-MM-DD (stored in DB) → DD/MM/YYYY (displayed to user)
+const dbToDisplay = (db: string): string => {
+  if (!db) return '';
+  const match = db.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return db; // already in display format or unknown
+  return `${match[3]}/${match[2]}/${match[1]}`;
+};
+
+// Convert DD/MM/YYYY (user input) → YYYY-MM-DD (sent to API)
+const displayToDb = (display: string): string => {
+  if (!display) return '';
+  const match = display.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return display;
+  return `${match[3]}-${match[2]}-${match[1]}`;
+};
+
+// Auto-format digits as user types → DD/MM/YYYY
+const formatDateInput = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
+
+const DISPLAY_DATE_REGEX = /^\d{2}\/\d{2}\/\d{4}$/;
 
 const EditProfileScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -32,15 +56,16 @@ const EditProfileScreen: React.FC = () => {
     lastName: user?.lastName || user?.last_name || '',
     email: user?.email || '',
     phone: user?.phone || user?.phoneNumber || user?.phone_number || '',
-    dateOfBirth: user?.dateOfBirth || user?.date_of_birth || '',
+    // Store display format (DD/MM/YYYY) in state; convert to DB format on save
+    dateOfBirth: dbToDisplay(user?.dateOfBirth || user?.date_of_birth || ''),
     gender: user?.gender || 'prefer_not_to_say',
   });
 
   const validate = (): string | null => {
     if (!formData.firstName.trim()) return 'First name is required';
     if (!formData.lastName.trim()) return 'Last name is required';
-    if (formData.dateOfBirth && !DATE_REGEX.test(formData.dateOfBirth)) {
-      return 'Date of birth must be in YYYY-MM-DD format (e.g. 1990-05-21)';
+    if (formData.dateOfBirth && !DISPLAY_DATE_REGEX.test(formData.dateOfBirth)) {
+      return 'Date of birth must be in DD/MM/YYYY format (e.g. 21/05/1990)';
     }
     return null;
   };
@@ -52,7 +77,6 @@ const EditProfileScreen: React.FC = () => {
       return;
     }
 
-    // Only include optional fields if they have values
     const payload: Record<string, any> = {
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
@@ -61,7 +85,8 @@ const EditProfileScreen: React.FC = () => {
     };
 
     if (formData.phone.trim()) payload.phone = formData.phone.trim();
-    if (formData.dateOfBirth.trim()) payload.dateOfBirth = formData.dateOfBirth.trim();
+    // Convert display format back to DB format before sending
+    if (formData.dateOfBirth.trim()) payload.dateOfBirth = displayToDb(formData.dateOfBirth.trim());
 
     try {
       setLoading(true);
@@ -86,6 +111,10 @@ const EditProfileScreen: React.FC = () => {
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleDateChange = (raw: string) => {
+    updateField('dateOfBirth', formatDateInput(raw));
   };
 
   return (
@@ -174,13 +203,13 @@ const EditProfileScreen: React.FC = () => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
               {t('profile.dateOfBirth')}{' '}
-              <Text style={styles.hint}>(YYYY-MM-DD)</Text>
+              <Text style={styles.hint}>(DD/MM/YYYY)</Text>
             </Text>
             <TextInput
               style={styles.input}
               value={formData.dateOfBirth}
-              onChangeText={(value) => updateField('dateOfBirth', value)}
-              placeholder="1990-05-21"
+              onChangeText={handleDateChange}
+              placeholder="21/05/1990"
               keyboardType="numbers-and-punctuation"
               maxLength={10}
             />
@@ -255,10 +284,7 @@ const EditProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7FAFC',
-  },
+  container: { flex: 1, backgroundColor: '#F7FAFC' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -270,32 +296,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
-  backButton: {
-    padding: 4,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1A202C',
-    flex: 1,
-    textAlign: 'center',
-  },
-  saveButton: {
-    padding: 4,
-    minWidth: 60,
-    alignItems: 'flex-end',
-  },
-  saveText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#E53E3E',
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 100,
-  },
+  backButton: { padding: 4 },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#1A202C', flex: 1, textAlign: 'center' },
+  saveButton: { padding: 4, minWidth: 60, alignItems: 'flex-end' },
+  saveText: { fontSize: 16, fontWeight: '600', color: '#E53E3E' },
+  content: { flex: 1 },
+  contentContainer: { paddingBottom: 100 },
   photoSection: {
     alignItems: 'center',
     paddingVertical: 32,
@@ -312,15 +318,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  changePhotoButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  changePhotoText: {
-    fontSize: 16,
-    color: '#3B82F6',
-    fontWeight: '600',
-  },
+  changePhotoButton: { paddingVertical: 8, paddingHorizontal: 16 },
+  changePhotoText: { fontSize: 16, color: '#3B82F6', fontWeight: '600' },
   section: {
     backgroundColor: '#FFFFFF',
     marginTop: 16,
@@ -335,29 +334,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A202C',
-    marginBottom: 16,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4B5563',
-    marginBottom: 8,
-  },
-  required: {
-    color: '#E53E3E',
-  },
-  hint: {
-    color: '#9CA3AF',
-    fontWeight: '400',
-    fontSize: 12,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1A202C', marginBottom: 16 },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: '600', color: '#4B5563', marginBottom: 8 },
+  required: { color: '#E53E3E' },
+  hint: { color: '#9CA3AF', fontWeight: '400', fontSize: 12 },
   input: {
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
@@ -368,11 +349,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1A202C',
   },
-  genderOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  genderOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   genderOption: {
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -381,28 +358,11 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: '#F9FAFB',
   },
-  genderOptionActive: {
-    backgroundColor: '#E53E3E',
-    borderColor: '#E53E3E',
-  },
-  genderText: {
-    fontSize: 14,
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  genderTextActive: {
-    color: '#FFFFFF',
-  },
-  comingSoon: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    paddingVertical: 20,
-  },
-  footer: {
-    height: 40,
-  },
+  genderOptionActive: { backgroundColor: '#E53E3E', borderColor: '#E53E3E' },
+  genderText: { fontSize: 14, color: '#4B5563', fontWeight: '500' },
+  genderTextActive: { color: '#FFFFFF' },
+  comingSoon: { fontSize: 14, color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', paddingVertical: 20 },
+  footer: { height: 40 },
 });
 
 export default EditProfileScreen;
