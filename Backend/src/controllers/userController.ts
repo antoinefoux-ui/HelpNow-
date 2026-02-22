@@ -123,12 +123,15 @@ class UserController {
       const {
         firstName,
         lastName,
+        phone,
         dateOfBirth,
         gender,
         language,
         isHelper,
         helperProfile,
       } = req.body;
+      // Note: email is accepted by the schema but not updated here — email
+      // changes require a dedicated verification flow.
 
       await client.query('BEGIN');
 
@@ -137,13 +140,13 @@ class UserController {
       const values: any[] = [];
       let valueIndex = 1;
 
-      if (firstName !== undefined) { updates.push(`first_name = $${valueIndex++}`); values.push(firstName); }
-      if (lastName !== undefined)  { updates.push(`last_name = $${valueIndex++}`);  values.push(lastName); }
+      if (firstName !== undefined) { updates.push(`first_name = $${valueIndex++}`);  values.push(firstName); }
+      if (lastName !== undefined)  { updates.push(`last_name = $${valueIndex++}`);   values.push(lastName); }
+      if (phone !== undefined)     { updates.push(`phone = $${valueIndex++}`);        values.push(phone || null); }
       if (dateOfBirth !== undefined){ updates.push(`date_of_birth = $${valueIndex++}`); values.push(dateOfBirth); }
-      if (gender !== undefined)    { updates.push(`gender = $${valueIndex++}`);      values.push(gender); }
-      if (language !== undefined)  { updates.push(`language = $${valueIndex++}`);    values.push(language); }
-      // FIX: accept isHelper field
-      if (isHelper !== undefined)  { updates.push(`is_helper = $${valueIndex++}`);   values.push(isHelper); }
+      if (gender !== undefined)    { updates.push(`gender = $${valueIndex++}`);       values.push(gender); }
+      if (language !== undefined)  { updates.push(`language = $${valueIndex++}`);     values.push(language); }
+      if (isHelper !== undefined)  { updates.push(`is_helper = $${valueIndex++}`);    values.push(isHelper); }
 
       let userResult;
       if (updates.length > 0) {
