@@ -53,8 +53,10 @@ const HelperModeScreen: React.FC = () => {
 
   useEffect(() => {
     if (user?.helperProfile) {
-      setIsAvailable(user.helperProfile.isAvailable ?? false);
-      setResponseRadius((user.helperProfile.responseRadius || 5000) / 1000);
+      const hp = user.helperProfile;
+      // DB returns snake_case (is_available, response_radius); handle both forms
+      setIsAvailable((hp.isAvailable ?? hp.is_available) ?? false);
+      setResponseRadius(((hp.responseRadius ?? hp.response_radius) || 5000) / 1000);
     }
   }, [user]);
 
@@ -159,11 +161,12 @@ const HelperModeScreen: React.FC = () => {
   const getStatusColor = () => (isAvailable ? '#10B981' : '#6B7280');
   const getStatusText = () => (isAvailable ? t('helper.online') : t('helper.offline'));
 
+  const hp = user?.helperProfile;
   const stats = {
-    totalHelps: user?.totalHelps || 0,
-    avgResponseTime: user?.helperProfile?.responseTime || 0,
+    totalHelps: user?.totalHelps || user?.total_helps || 0,
+    avgResponseTime: (hp?.responseTime ?? hp?.response_time) || 0,
     rating: Number(user?.rating) || 0,
-    successfulHelps: user?.helperProfile?.successfulHelps || 0,
+    successfulHelps: (hp?.successfulHelps ?? hp?.successful_helps) || 0,
   };
 
   return (
@@ -285,44 +288,54 @@ const HelperModeScreen: React.FC = () => {
             </View>
 
             <View style={styles.profileInfo}>
-              <View style={styles.profileRow}>
-                <Text style={styles.profileLabel}>Training Level:</Text>
-                <Text style={styles.profileValue}>
-                  {(user.helperProfile.trainingLevel ?? '').replace(/_/g, ' ').toUpperCase()}
-                </Text>
-              </View>
+              {(() => {
+                const p = user.helperProfile;
+                const trainingLevel = p.trainingLevel ?? p.training_level ?? '';
+                const verificationStatus = p.verificationStatus ?? p.verification_status ?? 'pending';
+                const situations = p.situationsWillingToHelp ?? p.situations_willing_to_help ?? [];
+                return (
+                  <>
+                    <View style={styles.profileRow}>
+                      <Text style={styles.profileLabel}>Training Level:</Text>
+                      <Text style={styles.profileValue}>
+                        {trainingLevel.replace(/_/g, ' ').toUpperCase()}
+                      </Text>
+                    </View>
 
-              <View style={styles.profileRow}>
-                <Text style={styles.profileLabel}>Verification:</Text>
-                <View style={styles.verificationBadge}>
-                  <Icon
-                    name={user.helperProfile.verificationStatus === 'verified' ? 'check-decagram' : 'clock-outline'}
-                    size={16}
-                    color={user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B'}
-                  />
-                  <Text style={[
-                    styles.verificationText,
-                    { color: user.helperProfile.verificationStatus === 'verified' ? '#10B981' : '#F59E0B' }
-                  ]}>
-                    {(user.helperProfile.verificationStatus ?? 'pending').toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-
-              {user.helperProfile.situationsWillingToHelp && user.helperProfile.situationsWillingToHelp.length > 0 && (
-                <View style={styles.profileRow}>
-                  <Text style={styles.profileLabel}>Can Help With:</Text>
-                  <View style={styles.situationsList}>
-                    {user.helperProfile.situationsWillingToHelp.map((situation, index) => (
-                      <View key={index} style={styles.situationTag}>
-                        <Text style={styles.situationText}>
-                          {(situation ?? '').replace(/_/g, ' ')}
+                    <View style={styles.profileRow}>
+                      <Text style={styles.profileLabel}>Verification:</Text>
+                      <View style={styles.verificationBadge}>
+                        <Icon
+                          name={verificationStatus === 'verified' ? 'check-decagram' : 'clock-outline'}
+                          size={16}
+                          color={verificationStatus === 'verified' ? '#10B981' : '#F59E0B'}
+                        />
+                        <Text style={[
+                          styles.verificationText,
+                          { color: verificationStatus === 'verified' ? '#10B981' : '#F59E0B' }
+                        ]}>
+                          {verificationStatus.toUpperCase()}
                         </Text>
                       </View>
-                    ))}
-                  </View>
-                </View>
-              )}
+                    </View>
+
+                    {situations.length > 0 && (
+                      <View style={styles.profileRow}>
+                        <Text style={styles.profileLabel}>Can Help With:</Text>
+                        <View style={styles.situationsList}>
+                          {situations.map((situation: string, index: number) => (
+                            <View key={index} style={styles.situationTag}>
+                              <Text style={styles.situationText}>
+                                {(situation ?? '').replace(/_/g, ' ')}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </>
+                );
+              })()}
             </View>
           </View>
         )}
