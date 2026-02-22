@@ -154,6 +154,8 @@ export const certificationSchema = Joi.object({
 export const updateUserSchema = Joi.object({
   firstName: Joi.string().min(2).max(50).optional(),
   lastName: Joi.string().min(2).max(50).optional(),
+  email: Joi.string().email().optional(),
+  phone: Joi.string().pattern(/^\+?[\d\s\-()]+$/).optional().allow(''),
   dateOfBirth: Joi.date().optional(),
   gender: Joi.string().valid('male', 'female', 'other', 'prefer_not_to_say').optional(),
   language: Joi.string().valid('en', 'fr', 'es', 'pl', 'ru', 'uk', 'sk', 'cs', 'de', 'it').optional(),
